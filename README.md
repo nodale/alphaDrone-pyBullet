@@ -1,2 +1,4 @@
 # alphaDrone-pyBullet
-yes
+
+-pipeline for generting a URDF file for isaac sim and pybullet
+
