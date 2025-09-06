@@ -24,7 +24,7 @@ class QuickMav:
     def sendHeartbeat(self):
         try:
             print("sending heartbeat")
-            self.master.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS, mavutil.mavlink.MAV_AUTOPILOT_INVALID, 0b00100000, 0, 0)
+            self.master.mav.heartbeat_send(mavutil.mavlink.MAV_TYPE_GCS, mavutil.mavlink.MAV_AUTOPILOT_INVALID, 0, 0, 0)
             self.master.wait_heartbeat(timeout=1)
         except:
             print("sending heartbeat failed :(")

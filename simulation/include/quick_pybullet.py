@@ -11,6 +11,8 @@ import math
 
 @dataclass
 class QuickBullet(QuickMav):
+    maxThrust : float = 40
+
 
     def __init__(self, address='localhost:14550', baudrate=57600, modelPath='urdf/preAlphaDrone.urdf', worldPath='plane.urdf', **kwargs):
         super().__init__(address=address, baudrate=baudrate, **kwargs)
@@ -23,8 +25,8 @@ class QuickBullet(QuickMav):
 
         p.setGravity(self.accField[0], self.accField[1], self.accField[2])
         _planeId = p.loadURDF(worldPath)
-        _startPos = [0,0,1]
-        _startOrientation = p.getQuaternionFromEuler([math.pi/2,0,0])
+        _startPos = [0,0,0.5]
+        _startOrientation = p.getQuaternionFromEuler([0,0,0])
 
         self.object = p.loadURDF(modelPath, _startPos, _startOrientation)
 
@@ -93,6 +95,10 @@ class QuickBullet(QuickMav):
             0xFF
             )
 
+    def sendFakeOdometry(self):
+        _time = int(time.time() * 1e6)
+        self.sendOdometry(_time, self.simPos, self.simQ, self.simVel, self.simAngVel)
+
     def runSimpleSensorsSim(self):
         self.getSimState()
         self.getAccelerometer()
@@ -100,3 +106,18 @@ class QuickBullet(QuickMav):
         self.getBarometer()
 
         self.sendSimSensors()
+
+    def getActuatorOutput(self):
+        _actOut = self.get('HIL_CONTROLS', block=True)
+        self.actOut = np.array([_actOut.aux1, _actOut.aux2, _actOut.aux3, _actOut.aux4])
+
+    def actuateVehicle(self):
+        self.getActuatorOutput()
+        _actForces = self.actOut * self.maxThrust
+
+        p.setJointMotorControlArray(
+                bodyUniqueId=self.object,
+                jointIndices=[0, 1, 2, 3],
+                controlmode=p.VELOCITY_CONTROL,
+                forces=_actForces
+                )

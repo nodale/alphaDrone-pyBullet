@@ -10,9 +10,11 @@ def main():
     qB = QuickBullet(address='tcpin:localhost:4560', baudrate=57600)
 
     while True:
-        p.stepSimulation()
-        time.sleep(1/100)
         qB.runSimpleSensorsSim()
+        qB.sendFakeOdometry()
+#        qB.actuateVehicle()
+        p.stepSimulation()
+        time.sleep(1/qB.freq)
 
 if __name__ == "__main__":
     main()
