@@ -3,20 +3,19 @@ from dataclasses import dataclass
 import pybullet as p
 import numpy as np
 
-from quick_mavlink import QuickMav
+from quick_bezier import QuickBezier
 
 import time
 import pybullet_data
 import math
 
 @dataclass
-class QuickBullet(QuickMav):
+class QuickBullet(QuickBezier):
     maxThrust : float = 40
-
 
     def __init__(self, address='localhost:14550', baudrate=57600, modelPath='urdf/preAlphaDrone.urdf', worldPath='plane.urdf', **kwargs):
         super().__init__(address=address, baudrate=baudrate, **kwargs)
-        self.sendHeartbeat()
+        #self.sendHeartbeat()
 
         self.accField = np.array([0, 0, -9.81])
 
@@ -57,6 +56,22 @@ class QuickBullet(QuickMav):
         self.timeC = time.time()
         self.dt = self.timeC - self.timeP
         self.timeP = self.timeC
+
+    #overwrites takeoff() from QuickBezier
+    def takeoff(self, z):
+        print("attempting to take off")
+
+        for i in range(100):
+            _time = int(time.time() * 1e6) & 0xFFFFFFFF
+            self.getSimState()
+            self.sendPositionTarget(_time, self.pos[0], self.pos[1], z)
+            time.sleep(1/self.freq)
+        self.arm()
+        for i in range(200):
+            _time = int(time.time() * 1e6) & 0xFFFFFFFF
+            self.getSimState()
+            self.sendPositionTarget(_time, self.simPos[0], self.simPos[1], z)
+            time.sleep(1/self.freq)
 
     def addNoise(self, obj, center=0.0, amplitude=0.008, dim=3):
         obj += np.random.normal(center, amplitude, dim) 
@@ -112,12 +127,39 @@ class QuickBullet(QuickMav):
         self.actOut = np.array([_actOut.aux1, _actOut.aux2, _actOut.aux3, _actOut.aux4])
 
     def actuateVehicle(self):
-        self.getActuatorOutput()
-        _actForces = self.actOut * self.maxThrust
+        #self.getActuatorOutput()
+        #_actForces = self.actOut * self.maxThrust
+
+        #p.setJointMotorControlArray(
+        #        bodyUniqueId=self.object,
+        #        jointIndices=[0, 1, 2, 3],
+        #        controlmode=p.VELOCITY_CONTROL,
+        #        forces=_actForces
+        #        )
+        propeller_joints = [0, 1, 2, 3]  
+        target_rpms = [500, 500, 500, 500] 
+        max_torque = [5, 5, 5, 5]  
+
+        target_velocities = [rpm * 2 * 3.1416 / 60 for rpm in target_rpms]
 
         p.setJointMotorControlArray(
-                bodyUniqueId=self.object,
-                jointIndices=[0, 1, 2, 3],
-                controlmode=p.VELOCITY_CONTROL,
-                forces=_actForces
-                )
+            bodyIndex=self.object,
+            jointIndices=propeller_joints,
+            controlMode=p.VELOCITY_CONTROL,
+            targetVelocities=target_velocities,
+            forces=max_torque
+        )
+
+        for i, joint in enumerate(propeller_joints):
+            prop_pos, prop_orn = p.getLinkState(self.object, joint)[0:2]
+
+            thrust_vector = [0, 0, 30] 
+
+            p.applyExternalForce(
+                objectUniqueId=self.object,
+                linkIndex=joint,
+                forceObj=thrust_vector,
+                posObj=prop_pos,
+                flags=p.WORLD_FRAME
+            )
+

@@ -14,7 +14,7 @@ class QuickBezier(QuickState):
     pVel : float = 0.1 #projected velocity
     step : float = 1.0
 
-    def __init__(self, address='localhost:14550', baudrate=57600, hostAddress='localhost', hostPort=12345, **kwargs):
+    def __init__(self, address, baudrate, hostAddress='localhost', hostPort='12345', **kwargs):
         super().__init__(address=address, baudrate=baudrate, hostAddress=hostAddress, hostPort=hostPort, **kwargs)
 
         self.velCommand = np.zeros(2)
@@ -22,7 +22,7 @@ class QuickBezier(QuickState):
         #initialising MAVLink
         self.sendHeartbeat()
         self.setFlightmode('OFFBOARD')
-        self.refeed()
+        #self.refeed()
 
         self.splineList = []
         self.llp = LinearLocalPlanner(self.splineList, self.pVel)

@@ -10,7 +10,7 @@ class QuickMav:
     freq : float = 50
     timeBoot : float = 0.0
 
-    def __init__(self, address='localhost:14550', baudrate=57600, **kwargs):
+    def __init__(self, address, baudrate, **kwargs):
         self.timeBoot = time.time()
         try:
             self.master = mavutil.mavlink_connection(address, baudrate)
@@ -74,6 +74,50 @@ class QuickMav:
 
     def get(self, TYPE, block=True):
         return self.master.recv_match(type=TYPE, blocking=block)
+
+    def setHome(self):
+        #self.master.mav.command_long_send(
+        #    self.master.target_system,
+        #    self.master.target_component,
+        #    mavutil.mavlink.MAV_CMD_DO_SET_HOME,
+        #    1, # 0 for current pos, see mavlink common.xml doc for more, good luck
+        #    0.01, # roll
+        #    0.01, #pitch
+        #    0.1, #yaw
+        #    47.3990968000 * 1e7, 
+        #    8.5451335000 * 1e7, 
+        #    0 * 1e3,
+        #    0
+        #)
+
+        _lat_int = int(47.3990968000 * 1e7)
+        _lon_int = int(8.5451335000 * 1e7) 
+        _alt = int(1 * 1e3)
+        _timeNow = time.time() - self.timeBoot
+
+        self.master.mav.param_set_send(
+            self.master.target_system,
+            self.master.target_component,
+            b"EKF2_ORIGIN_LAT",
+            float(_lat_int),
+            mavutil.mavlink.MAV_PARAM_TYPE_REAL32
+        )
+
+        self.master.mav.param_set_send(
+            self.master.target_system,
+            self.master.target_component,
+            b"EKF2_ORIGIN_LON",
+            float(_lon_int),
+            mavutil.mavlink.MAV_PARAM_TYPE_REAL32
+        )
+
+        self.master.mav.param_set_send(
+            self.master.target_system,
+            self.master.target_component,
+            b"EKF2_ORIGIN_ALT",
+            float(_alt),
+            mavutil.mavlink.MAV_PARAM_TYPE_REAL32
+        )
 
     def sendOdometry(self, time, pos, q, vel, rotRates, cov1=[0.002]*21, cov2=[0.002]*21):
         vodom = mavlink2.MAVLink_odometry_message(
