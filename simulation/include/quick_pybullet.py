@@ -135,18 +135,22 @@ class QuickBullet(QuickBezier):
                 0, 0                     
                 )
 
-        self.master.mav.command_long_send(
-                self.master.target_system,
-                self.master.target_component,
-                mavutil.mavlink.MAV_CMD_DO_SET_HOME,
-                0,
-                0,
-                0,
-                0,
-                int(_lat * 1e7),         
-                int(_lon * 1e7),         
-                int(_alt * 1000),
-                0
+        self.master.mav.hil_gps_send(
+                int(time.time() * 1e6)    , # Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude of the number. [us] (type:uint64_t)
+                3             , # 0-1: no fix, 2: 2D fix, 3: 3D fix. Some applications will not use the value of this field unless it is at least two, so always correctly fill in the fix. (type:uint8_t)
+                int(71 * 1e7)            , # Latitude (WGS84) [degE7] (type:int32_t)
+                int(-40 * 1e7)           , # Longitude (WGS84) [degE7] (type:int32_t)
+                int(500 * 1e3)            , # Altitude (MSL). Positive for up. [mm] (type:int32_t)
+                0             , # GPS HDOP horizontal dilution of position (unitless). If unknown, set to: UINT16_MAX (type:uint16_t)
+                0             , # GPS VDOP vertical dilution of position (unitless). If unknown, set to: UINT16_MAX (type:uint16_t)
+                0             , # GPS ground speed. If unknown, set to: 65535 [cm/s] (type:uint16_t)
+                0             , # GPS velocity in north direction in earth-fixed NED frame [cm/s] (type:int16_t)
+                0             , # GPS velocity in east direction in earth-fixed NED frame [cm/s] (type:int16_t)
+                0             , # GPS velocity in down direction in earth-fixed NED frame [cm/s] (type:int16_t)
+                65535         , # Course over ground (NOT heading, but direction of movement), 0.0..359.99 degrees. If unknown, set to: 65535 [cdeg] (type:uint16_t)
+                255             , # Number of satellites visible. If unknown, set to 255 (type:uint8_t)
+                0             , # GPS ID (zero indexed). Used for multiple GPS inputs (type:uint8_t)
+                36000         , # Yaw of vehicle relative to Earth's North, zero means not available, use 36000 for north [cdeg] (type:uint16_t)
                 )
 
     def sendFakeOdometry(self):
@@ -184,13 +188,13 @@ class QuickBullet(QuickBezier):
 
         p.setJointMotorControlArray(
                 bodyIndex=self.object,
-                jointIndices=propeller_joints,
+                jointIndices=self.propellerJoints,
                 controlMode=p.VELOCITY_CONTROL,
                 targetVelocities=target_velocities,
                 forces=max_torque
                 )
 
-        for i, joint in enumerate(propeller_joints):
+        for i, joint in enumerate(self.propellerJoints):
             prop_pos, prop_orn = p.getLinkState(self.object, joint)[0:2]
 
 
@@ -199,7 +203,7 @@ class QuickBullet(QuickBezier):
                     linkIndex=joint,
                     forceObj=self.thrustVect[i],
                     posObj=prop_pos,
-                    flags=p.WORLD_FRAME
+                    flags=p.LINK_FRAME
                     )
 
 
@@ -210,11 +214,11 @@ class QuickBullet(QuickBezier):
         #this will be replaced accordingly
         self.maxTorque = [5, 5, 5, 5]  
 
-        target_velocities = [rpm * 2 * 3.1416 / 60 for rpm in target_rpms]
+        target_velocities = [rpm * 2 * 3.1416 / 60 for rpm in _target_rpms]
 
         p.setJointMotorControlArray(
                 bodyIndex=self.object,
-                jointIndices=propeller_joints,
+                jointIndices=self.propellerJoints,
                 controlMode=p.VELOCITY_CONTROL,
                 targetVelocities=target_velocities,
                 forces=self.maxTorque
@@ -226,13 +230,13 @@ class QuickBullet(QuickBezier):
 
             #this will be replaced with a model
             #will need to rotate it based on the joint's rotation
-            thrust_vector = [0, 0, 8] 
+            _thrust_vector = [0, self.actOut[_i] * 100, 0] 
 
             p.applyExternalForce(
                     objectUniqueId=self.object,
                     linkIndex=_joint,
-                    forceObj=thrust_vector,
-                    posObj=_Pos,
-                    flags=p.WORLD_FRAME
+                    forceObj=_thrust_vector,
+                    posObj=_pPos,
+                    flags=p.LINK_FRAME
                     )
 
