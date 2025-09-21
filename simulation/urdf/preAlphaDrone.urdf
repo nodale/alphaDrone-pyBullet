@@ -107,32 +107,32 @@
     <parent link="base_link"/>
     <child link="rotor_1"/>
     <origin xyz="0.1636 -0.1637 0.0485" rpy="1.5708 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="0" upper="1000" effort="1.0" velocity="1000"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="10000" effort="1.0" velocity="1000"/>
   </joint>
 
   <joint name="rotor_2_joint" type="revolute">
     <parent link="base_link"/>
     <child link="rotor_2"/>
     <origin xyz="0.1636 0.1637 0.0485" rpy="1.5708 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="0" upper="1000" effort="1.0" velocity="1000"/>
+    <axis xyz="0 -1 0"/>
+    <limit lower="0" upper="10000" effort="1.0" velocity="1000"/>
   </joint>
 
   <joint name="rotor_3_joint" type="revolute">
     <parent link="base_link"/>
     <child link="rotor_3"/>
     <origin xyz="-0.1636 0.1637 0.0485" rpy="1.5708 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="0" upper="1000" effort="1.0" velocity="1000"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="0" upper="10000" effort="1.0" velocity="1000"/>
   </joint>
 
   <joint name="rotor_4_joint" type="revolute">
     <parent link="base_link"/>
     <child link="rotor_4"/>
     <origin xyz="-0.1637 -0.1637 0.0485" rpy="1.5708 0 0"/>
-    <axis xyz="0 0 1"/>
-    <limit lower="0" upper="1000" effort="1.0" velocity="1000"/>
+    <axis xyz="0 -1 0"/>
+    <limit lower="0" upper="10000" effort="1.0" velocity="1000"/>
   </joint>
 
 

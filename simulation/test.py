@@ -22,7 +22,7 @@ def wait(qB):
 def main():
     qB = QuickBullet(address='tcpin:localhost:4560', baudrate=57600)
     qB.resetLogFiles()
-    qB.freq = 100
+    qB.freq = 1000
 
     qB.pVel = 0.1
 
@@ -32,8 +32,9 @@ def main():
 
     while True:
         qB.runSimpleSensorsSim()
+        qB.getActuatorOutput()
         qB.sendFakeOdometry()
-        qB.actuateVehicle()
+        qB.actuateFakeVehicle()
         p.stepSimulation()
         time.sleep(1/qB.freq)
 
