@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 import pybullet as p
 import numpy as np
+from pymavlink import mavutil
 
 from quick_bezier import QuickBezier
 
@@ -45,6 +46,10 @@ class QuickBullet(QuickBezier):
         self.timeC = time.time()
         self.timeP = time.time()
         self.dt = 0.1
+        
+        self.propellerJoints = [0, 1, 2, 3] 
+
+        self.thrustVect = np.zeros([4,3])
 
     def getSimState(self):
         self.simPosP, self.simQP = self.simPos, self.simQ
@@ -110,6 +115,40 @@ class QuickBullet(QuickBezier):
             0xFF
             )
 
+    def sendFakeGPS(self):
+        _lat0, _lon0, _alt0 = 47.397742, 8.545594, 500
+
+        _R = 6378137.0 
+        _dlat = self.simPos[1] / _R
+        _dlon = self.simPos[0] / (_R * math.cos(math.radians(_lat0)))
+        _lat = _lat0 + math.degrees(_dlat)
+        _lon = _lon0 + math.degrees(_dlon)
+        _alt = _alt0 - self.simPos[2] 
+
+        self.master.mav.gps_raw_int_send(
+                int(time.time() * 1e6),  
+                3,                       
+                int(_lat * 1e7),         
+                int(_lon * 1e7),         
+                int(_alt * 1000),        
+                100, 100, 100,           
+                0, 0                     
+                )
+
+        self.master.mav.command_long_send(
+                self.master.target_system,
+                self.master.target_component,
+                mavutil.mavlink.MAV_CMD_DO_SET_HOME,
+                0,
+                0,
+                0,
+                0,
+                int(_lat * 1e7),         
+                int(_lon * 1e7),         
+                int(_alt * 1000),
+                0
+                )
+
     def sendFakeOdometry(self):
         _time = int(time.time() * 1e6)
         self.sendOdometry(_time, self.simPos, self.simQ, self.simVel, self.simAngVel)
@@ -119,47 +158,81 @@ class QuickBullet(QuickBezier):
         self.getAccelerometer()
         self.getGyroscope()
         self.getBarometer()
+        self.sendFakeGPS()
 
         self.sendSimSensors()
 
     def getActuatorOutput(self):
-        _actOut = self.get('HIL_CONTROLS', block=True)
-        self.actOut = np.array([_actOut.aux1, _actOut.aux2, _actOut.aux3, _actOut.aux4])
+        try:
+            _actOut = self.master.recv_match(type='HIL_ACTUATOR_CONTROLS', blocking=False)
+            self.actOut = np.array([_actOut.controls[0], _actOut.controls[1], _actOut.controls[2], _actOut.controls[3]])
+        except:
+            print("nope, no actuation")
 
-    def actuateVehicle(self):
-        #self.getActuatorOutput()
-        #_actForces = self.actOut * self.maxThrust
+    def actuateFakeVehicle(self):
 
-        #p.setJointMotorControlArray(
-        #        bodyUniqueId=self.object,
-        #        jointIndices=[0, 1, 2, 3],
-        #        controlmode=p.VELOCITY_CONTROL,
-        #        forces=_actForces
-        #        )
         propeller_joints = [0, 1, 2, 3]  
-        target_rpms = [500, 500, 500, 500] 
+        target_rpms = [2000, 2000, 2000, 2000] 
         max_torque = [5, 5, 5, 5]  
+
+        self.thrustVect[0][2] = 4
+        self.thrustVect[1][2] = 4
+        self.thrustVect[2][2] = 4
+        self.thrustVect[3][2] = 4
 
         target_velocities = [rpm * 2 * 3.1416 / 60 for rpm in target_rpms]
 
         p.setJointMotorControlArray(
-            bodyIndex=self.object,
-            jointIndices=propeller_joints,
-            controlMode=p.VELOCITY_CONTROL,
-            targetVelocities=target_velocities,
-            forces=max_torque
-        )
+                bodyIndex=self.object,
+                jointIndices=propeller_joints,
+                controlMode=p.VELOCITY_CONTROL,
+                targetVelocities=target_velocities,
+                forces=max_torque
+                )
 
         for i, joint in enumerate(propeller_joints):
             prop_pos, prop_orn = p.getLinkState(self.object, joint)[0:2]
 
-            thrust_vector = [0, 0, 30] 
 
             p.applyExternalForce(
-                objectUniqueId=self.object,
-                linkIndex=joint,
-                forceObj=thrust_vector,
-                posObj=prop_pos,
-                flags=p.WORLD_FRAME
-            )
+                    objectUniqueId=self.object,
+                    linkIndex=joint,
+                    forceObj=self.thrustVect[i],
+                    posObj=prop_pos,
+                    flags=p.WORLD_FRAME
+                    )
+
+
+    def actuateVehicle(self):
+
+        #this will be replaced by actuator output from PX4
+        _target_rpms = [500, 500, 500, 500] 
+        #this will be replaced accordingly
+        self.maxTorque = [5, 5, 5, 5]  
+
+        target_velocities = [rpm * 2 * 3.1416 / 60 for rpm in target_rpms]
+
+        p.setJointMotorControlArray(
+                bodyIndex=self.object,
+                jointIndices=propeller_joints,
+                controlMode=p.VELOCITY_CONTROL,
+                targetVelocities=target_velocities,
+                forces=self.maxTorque
+                )
+
+
+        for _i, _joint in enumerate(self.propellerJoints):
+            _pPos, _pRot = p.getLinkState(self.object, _joint)[0:2]
+
+            #this will be replaced with a model
+            #will need to rotate it based on the joint's rotation
+            thrust_vector = [0, 0, 8] 
+
+            p.applyExternalForce(
+                    objectUniqueId=self.object,
+                    linkIndex=_joint,
+                    forceObj=thrust_vector,
+                    posObj=_Pos,
+                    flags=p.WORLD_FRAME
+                    )
 
