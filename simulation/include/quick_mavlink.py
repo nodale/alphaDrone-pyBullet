@@ -75,68 +75,6 @@ class QuickMav:
     def get(self, TYPE, block=True):
         return self.master.recv_match(type=TYPE, blocking=False)
 
-    def setHome(self):
-        #self.master.mav.command_long_send(
-        #    self.master.target_system,
-        #    self.master.target_component,
-        #    mavutil.mavlink.MAV_CMD_DO_SET_HOME,
-        #    1, # 0 for current pos, see mavlink common.xml doc for more, good luck
-        #    0.01, # roll
-        #    0.01, #pitch
-        #    0.1, #yaw
-        #    47.3990968000 * 1e7, 
-        #    8.5451335000 * 1e7, 
-        #    0 * 1e3,
-        #    0
-        #)
-
-        _lat_int = int(47.3990968000 * 1e7)
-        _lon_int = int(8.5451335000 * 1e7) 
-        _alt = int(1 * 1e3)
-        _timeNow = time.time() - self.timeBoot
-
-        self.master.mav.param_set_send(
-                self.master.target_system,
-                self.master.target_component,
-                b"EKF2_ORIGIN_LAT",
-                float(_lat_int),
-                mavutil.mavlink.MAV_PARAM_TYPE_REAL32
-                )
-
-        self.master.mav.param_set_send(
-                self.master.target_system,
-                self.master.target_component,
-                b"EKF2_ORIGIN_LON",
-                float(_lon_int),
-                mavutil.mavlink.MAV_PARAM_TYPE_REAL32
-                )
-
-        self.master.mav.param_set_send(
-                self.master.target_system,
-                self.master.target_component,
-                b"EKF2_ORIGIN_ALT",
-                float(_alt),
-                mavutil.mavlink.MAV_PARAM_TYPE_REAL32
-                )
-
-        self.master.mav.hil_gps_send(
-                int(time.time() * 1e6)    , # Timestamp (UNIX Epoch time or time since system boot). The receiving end can infer timestamp format (since 1.1.1970 or since system boot) by checking for the magnitude of the number. [us] (type:uint64_t)
-                0             , # 0-1: no fix, 2: 2D fix, 3: 3D fix. Some applications will not use the value of this field unless it is at least two, so always correctly fill in the fix. (type:uint8_t)
-                40            , # Latitude (WGS84) [degE7] (type:int32_t)
-                17            , # Longitude (WGS84) [degE7] (type:int32_t)
-                0             , # Altitude (MSL). Positive for up. [mm] (type:int32_t)
-                0             , # GPS HDOP horizontal dilution of position (unitless). If unknown, set to: UINT16_MAX (type:uint16_t)
-                0             , # GPS VDOP vertical dilution of position (unitless). If unknown, set to: UINT16_MAX (type:uint16_t)
-                0             , # GPS ground speed. If unknown, set to: 65535 [cm/s] (type:uint16_t)
-                0             , # GPS velocity in north direction in earth-fixed NED frame [cm/s] (type:int16_t)
-                0             , # GPS velocity in east direction in earth-fixed NED frame [cm/s] (type:int16_t)
-                0             , # GPS velocity in down direction in earth-fixed NED frame [cm/s] (type:int16_t)
-                65535         , # Course over ground (NOT heading, but direction of movement), 0.0..359.99 degrees. If unknown, set to: 65535 [cdeg] (type:uint16_t)
-                0             , # Number of satellites visible. If unknown, set to 255 (type:uint8_t)
-                0             , # GPS ID (zero indexed). Used for multiple GPS inputs (type:uint8_t)
-                36000         , # Yaw of vehicle relative to Earth's North, zero means not available, use 36000 for north [cdeg] (type:uint16_t)
-                )
-
     def sendOdometry(self, time, pos, q, vel, rotRates, cov1=[0.002]*21, cov2=[0.002]*21):
         vodom = mavlink2.MAVLink_odometry_message(
                 time,
