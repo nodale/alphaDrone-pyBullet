@@ -15,12 +15,12 @@ python virtual environment is preferred and requires libraries in the requiremen
     pip install -r requirements.txt
 
 ## PX4 setup
-as for PX4, one needs the PX4-Autopilot repository (https://github.com/PX4/PX4-Autopilot)
+as for PX4, one needs the PX4-Autopilot repository (https://github.com/PX4/PX4-Autopilot).
 the following build is required for Software-In-The-Loop simulation
 
     make px4_sitl_nolockstep none_iris
 
-after building it, one can simply run PX4
+after building it, one can simply run PX4 with
 
     Your-PX4-repository-folder/build/px4_sitl_nolockstep/bin/
     ./px4
@@ -37,7 +37,7 @@ run it and open QGroundControl. Go to parameters and set the following
     SYS_HAS_BARO    Disabled
     SYS_HAS_MAG     0
 
-also check you SYS_AUTOSTART, it should be
+also check the SYS_AUTOSTART, it should be
 
     SYS_AUTOSTART   10016
 
