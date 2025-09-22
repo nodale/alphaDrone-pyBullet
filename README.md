@@ -4,18 +4,19 @@ This repository gives a pipeline for integrating CAD model to PyBullet, as well 
 Everything has been tested on Ubuntu 24.04.3 LTS
 
 # Installation
-## Python environment
-A python environment is preferred and requires libraries in the requirements.txt. One can simply recursively install all of them
-    
-    pip install -r requirements.txt
-
 ## Cloning repository
-as for the repository itself, simply do
+the first step is to clone this repository. simply do
 
     git clone git@github.com:nodale/alphaDrone-pyBullet.git
 
+## Python environment
+python virtual environment is preferred and requires libraries in the requirements.txt. One can simply recursively install all of them
+    
+    pip install -r requirements.txt
+
 ## PX4 setup
-as for PX4, one needs the following build
+as for PX4, one needs the PX4-Autopilot repository (https://github.com/PX4/PX4-Autopilot)
+the following build is required for Software-In-The-Loop simulation
 
     make px4_sitl_nolockstep none_iris
 
