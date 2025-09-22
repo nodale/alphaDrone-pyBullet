@@ -1,10 +1,11 @@
 # alphaDrone-pyBullet
 
 This repository gives a pipeline for integrating CAD model to PyBullet, as well as providing a base code template for running PX4-PyBullet Software-In-The-Loop simulation.
+Everything has been tested on Ubuntu 24.04.3 LTS
 
 # Installation
 ## Python environment
-A python environment is preferably setup and requires libraries in the requirements.txt. One can simply recursively install all of them by doing the following
+A python environment is preferred and requires libraries in the requirements.txt. One can simply recursively install all of them
     
     pip install -r requirements.txt
 
@@ -18,7 +19,7 @@ as for PX4, one needs the following build
 
     make px4_sitl_nolockstep none_iris
 
-after building it, one can simply run PX4 here
+after building it, one can simply run PX4
 
     Your-PX4-repository-folder/build/px4_sitl_nolockstep/bin/
     ./px4
@@ -34,6 +35,10 @@ run it and open QGroundControl. Go to parameters and set the following
     EKF2_HGT_REF    Vision
     SYS_HAS_BARO    Disabled
     SYS_HAS_MAG     0
+
+also check you SYS_AUTOSTART, it should be
+
+    SYS_AUTOSTART   10016
 
 # Usage
 To run the simulation, got to your cloned PX4 Repository
