@@ -27,7 +27,7 @@ def main():
     qB.pVel = 0.1
 
     wait(qB)
-    qB.setFlightmode('OFFBOARD')
+    #qB.setFlightmode('OFF')
     qB.takeoff(-1.0)
 
     while True:
@@ -35,7 +35,7 @@ def main():
         qB.getActuatorOutput()
         qB.actuateVehicle()
         qB.sendFakeOdometry()
-        qB.actuateFakeVehicle()
+        qB.actuateVehicle()
         p.stepSimulation()
         time.sleep(1/qB.freq)
 

@@ -37,7 +37,7 @@ run it and open QGroundControl. Go to parameters and set the following
     SYS_HAS_BARO    Disabled
     SYS_HAS_MAG     0
 
-also check the SYS_AUTOSTART, it should be
+check SYS_AUTOSTART, it should be
 
     SYS_AUTOSTART   10016
 

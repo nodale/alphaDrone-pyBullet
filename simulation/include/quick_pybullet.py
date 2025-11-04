@@ -14,9 +14,8 @@ import math
 class QuickBullet(QuickBezier):
     maxThrust : float = 40
 
-    def __init__(self, address='localhost:14550', baudrate=57600, modelPath='urdf/preAlphaDrone.urdf', worldPath='plane.urdf', **kwargs):
+    def __init__(self, address='localhost:14550', baudrate=57600, modelPath='urdf/preBetaDrone.urdf', worldPath='plane.urdf', **kwargs):
         super().__init__(address=address, baudrate=baudrate, **kwargs)
-        #self.sendHeartbeat()
 
         self.accField = np.array([0, 0, -9.81])
 
@@ -210,7 +209,7 @@ class QuickBullet(QuickBezier):
     def actuateVehicle(self):
 
         #this will be replaced by actuator output from PX4
-        _target_rpms = [500, 500, 500, 500] 
+        _target_rpms = [-500, 500, -500, 500] 
         #this will be replaced accordingly
         self.maxTorque = [5, 5, 5, 5]  
 
@@ -229,7 +228,7 @@ class QuickBullet(QuickBezier):
             _pPos, _pRot = p.getLinkState(self.object, _joint)[0:2]
 
             #this will be replaced with a model
-            _thrust_vector = [0, self.actOut[_i] * 100, 0] 
+            _thrust_vector = [0, 0, self.actOut[_i]] 
 
             p.applyExternalForce(
                     objectUniqueId=self.object,
