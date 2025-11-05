@@ -13,6 +13,7 @@ class QuickMav:
     def __init__(self, address, baudrate, **kwargs):
         self.timeBoot = time.time()
         try:
+            print("connecting to main com")
             self.master = mavutil.mavlink_connection(address, baudrate)
         except:
             print("error in __init__, MAVlink refuses to connect, maybe wrong address or baudrate")
@@ -23,50 +24,108 @@ class QuickMav:
         self.freq = nfreq
 
     def sendHeartbeat(self):
+        print("#################################### primary com init executed ######################################\n")
         try:
             print("sending heartbeat")
             self.master.mav.heartbeat_send(
-                    mavutil.mavlink.MAV_TYPE_GENERIC,      # or MAV_TYPE_GENERIC, used to be QUADCOPTER
+                    mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER,      # or MAV_TYPE_GENERIC, used to be QUADCOPTER
                     mavutil.mavlink.MAV_AUTOPILOT_INVALID,   # still fine
                     0,                                       # base_mode
                     0,                                       # custom_mode
                     mavutil.mavlink.MAV_STATE_ACTIVE         # system_status
                     )
             self.master.wait_heartbeat(timeout=1)
+
+            self.master.mav.command_long_send(
+                    self.master.target_system,
+                    self.master.target_component,
+                    mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  
+                    0,                                             
+                    93,                             
+                    10000,                                   
+                    0, 0, 0, 0, 0                                  
+                    )
         except:
             print("sending heartbeat failed :(")
 
-        self.master.mav.command_long_send(
-                self.master.target_system,
-                self.master.target_component,
-                mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  
-                0,                                             
-                93,                             
-                10000,                                   
-                0, 0, 0, 0, 0                                  
-                )
-
         print("MAVLINK ENGAGED")
 
+    def initSecondaryCom(self, address, baudrate):
+        self.timeBoot = time.time()
+        print("#################################### secondary com init executed ######################################\n")
+        try:
+            print("connecting to secondary com")
+            self.master2 = mavutil.mavlink_connection(address, baudrate)
+
+            print("sending heartbeat for secondary com")
+            self.master2.mav.heartbeat_send(
+                    mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER,      # or MAV_TYPE_GENERIC, used to be QUADCOPTER
+                    mavutil.mavlink.MAV_AUTOPILOT_INVALID,   # still fine
+                    0,                                       # base_mode
+                    0,                                       # custom_mode
+                    mavutil.mavlink.MAV_STATE_ACTIVE         # system_status
+                    )
+            self.master2.wait_heartbeat(timeout=1)
+
+            self.master2.mav.command_long_send(
+                    self.master2.target_system,
+                    self.master2.target_component,
+                    mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  
+                    0,                                             
+                    93,                             
+                    10000,                                   
+                    0, 0, 0, 0, 0                                  
+                    )
+        except:
+            print("error in initSecondaryCom, MAVlink refuses to connect, maybe wrong address or baudrate")
+
+    def initTertiaryCom(self, address, baudrate):
+        self.timeBoot = time.time()
+        print("#################################### tertiary com init executed ######################################\n")
+        try:
+            print("connecting to tertiary com")
+            self.master3 = mavutil.mavlink_connection(address, baudrate)
+
+            print("sending heartbeat for tertiary com")
+            self.master3.mav.heartbeat_send(
+                    mavutil.mavlink.MAV_TYPE_ONBOARD_CONTROLLER,      # or MAV_TYPE_GENERIC, used to be QUADCOPTER
+                    mavutil.mavlink.MAV_AUTOPILOT_INVALID,   # still fine
+                    0,                                       # base_mode
+                    0,                                       # custom_mode
+                    mavutil.mavlink.MAV_STATE_ACTIVE         # system_status
+                    )
+            self.master3.wait_heartbeat(timeout=1)
+
+            self.master3.mav.command_long_send(
+                    self.master3.target_system,
+                    self.master3.target_component,
+                    mavutil.mavlink.MAV_CMD_SET_MESSAGE_INTERVAL,  
+                    0,                                             
+                    375,                             
+                    10000,                                   
+                    0, 0, 0, 0, 0                                  
+                    )
+        except:
+            print("error in initTertiaryCom, MAVlink refuses to connect, maybe wrong address or baudrate")
 
     def setFlightmode(self, mode):
-        self.master.set_mode(mode)
+        self.master2.set_mode(mode)
 
         print("flight mode is set to ", mode)
 
     def arm(self):
-        self.master.mav.command_long_send(
-                self.master.target_system,
-                self.master.target_component,
+        self.master2.mav.command_long_send(
+                self.master2.target_system,
+                self.master2.target_component,
                 mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
                 0, 1, 0, 0, 0, 0, 0, 0
                 )
         print("DRONE ARMED")
 
     def disarm(self):
-        self.master.mav.command_long_send(
-                self.master.target_system,
-                self.master.target_component,
+        self.master2.mav.command_long_send(
+                self.master2.target_system,
+                self.master2.target_component,
                 mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
                 0, 0, 0, 0, 0, 0, 0, 0
                 )
@@ -108,10 +167,10 @@ class QuickMav:
                 )
 
     def sendVelocityTarget(self, time, vx, vy, vz): 
-        self.master.mav.set_position_target_local_ned_send(
+        self.master2.mav.set_position_target_local_ned_send(
                 time,
-                self.master.target_system,
-                self.master.target_component,
+                self.master2.target_system,
+                self.master2.target_component,
                 mavutil.mavlink.MAV_FRAME_LOCAL_NED,
                 0b0000111111000111,
                 0, 0, 0,  #position
@@ -121,25 +180,14 @@ class QuickMav:
                 )
 
     def sendPositionTarget(self, time, x, y, z): 
-#        self.master.mav.set_position_target_local_ned_send(
-#                time,
-#                self.master.target_system,
-#                self.master.target_component,
-#                mavutil.mavlink.MAV_FRAME_LOCAL_NED,
-#                0b0000111111111000,
-#                x, y, z,  #position
-#                0, 0, 0,  #velocity
-#                0, 0, 0,  #acceleration
-#                0, 0  #yaw yaw_rate
-#               )
-        self.master.mav.set_position_target_local_ned_send(
+        self.master2.mav.set_position_target_local_ned_send(
                 time,
-                self.master.target_system,
-                self.master.target_component,
-                mavutil.mavlink.MAV_FRAME_LOCAL_NED,  # PX4 accepts LOCAL_NED or BODY_NED
-                0b0000111111111000,  # use position only (ignore vel, acc, yaw, yaw_rate)
-                x, y, z,             # position (in meters, NED frame)
-                0, 0, 0,             # velocity
-                0, 0, 0,             # acceleration
-                0, 0                 # yaw, yaw_rate
-                )
+                self.master2.target_system,
+                self.master2.target_component,
+                mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+                0b0000111111111000,
+                x, y, z,  #position
+                0, 0, 0,  #velocity
+                0, 0, 0,  #acceleration
+                0, 0  #yaw yaw_rate
+               )

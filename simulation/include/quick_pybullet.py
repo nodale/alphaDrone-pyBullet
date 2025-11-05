@@ -37,6 +37,7 @@ class QuickBullet(QuickBezier):
 
     def initSimState(self):
         self.simPos, self.simQ = p.getBasePositionAndOrientation(self.object)
+        self.simQ = (self.simQ[3], self.simQ[0], self.simQ[1], self.simQ[2])
         self.simVel, self.simAngVel = p.getBaseVelocity(self.object)
 
         self.simPosP, self.simQP = p.getBasePositionAndOrientation(self.object)
@@ -49,12 +50,14 @@ class QuickBullet(QuickBezier):
         self.propellerJoints = [0, 1, 2, 3] 
 
         self.thrustVect = np.zeros([4,3])
+        self.actOut = np.empty(4)
 
     def getSimState(self):
         self.simPosP, self.simQP = self.simPos, self.simQ
         self.simVelP, self.simAngVelP = self.simVel, self.simAngVel
 
         self.simPos, self.simQ = p.getBasePositionAndOrientation(self.object)
+        self.simQ = (self.simQ[3], self.simQ[0], self.simQ[1], self.simQ[2])
         self.simVel, self.simAngVel = p.getBaseVelocity(self.object)
 
         self.timeC = time.time()
@@ -124,19 +127,19 @@ class QuickBullet(QuickBezier):
         _lon = _lon0 + math.degrees(_dlon)
         _alt = _alt0 - self.simPos[2] 
 
-        self.master.mav.gps_raw_int_send(
-                int(time.time() * 1e6),  
-                3,                       
-                int(_lat * 1e7),         
-                int(_lon * 1e7),         
-                int(_alt * 1000),        
-                100, 100, 100,           
-                0, 0                     
-                )
+        #self.master.mav.gps_raw_int_send(
+        #        int(time.time() * 1e6),  
+        #        3,                       
+        #        int(_lat * 1e7),         
+        #        int(_lon * 1e7),         
+        #        int(_alt * 1000),        
+        #        100, 100, 100,           
+        #        0, 0                     
+        #        )
 
         self.master.mav.hil_gps_send(
                 int(time.time() * 1e6), 
-                3, 
+                3,
                 int(71 * 1e7), 
                 int(-40 * 1e7), 
                 int(500 * 1e3), 
@@ -169,8 +172,9 @@ class QuickBullet(QuickBezier):
         try:
             _actOut = self.master.recv_match(type='HIL_ACTUATOR_CONTROLS', blocking=False)
             self.actOut = np.array([_actOut.controls[0], _actOut.controls[1], _actOut.controls[2], _actOut.controls[3]])
+            print(f"{self.actOut[0]:.2f}, {self.actOut[1]:.2f}, {self.actOut[2]:.2f}, {self.actOut[3]:.2f}")
         except:
-            print("nope, no actuation")
+            print("\n")
 
     def actuateFakeVehicle(self):
 

@@ -21,7 +21,7 @@ class QuickBezier(QuickState):
 
         #initialising MAVLink
         self.sendHeartbeat()
-        self.setFlightmode('OFFBOARD')
+        #self.setFlightmode('OFFBOARD')
         #self.refeed()
 
         self.splineList = []
