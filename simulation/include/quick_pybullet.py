@@ -12,7 +12,7 @@ import math
 
 @dataclass
 class QuickBullet(QuickBezier):
-    maxThrust : float = 40
+    maxT : float = 7.0
 
     def __init__(self, address='localhost:14550', baudrate=57600, modelPath='urdf/preBetaDrone.urdf', worldPath='plane.urdf', **kwargs):
         super().__init__(address=address, baudrate=baudrate, **kwargs)
@@ -171,7 +171,7 @@ class QuickBullet(QuickBezier):
     def getActuatorOutput(self):
         try:
             _actOut = self.master.recv_match(type='HIL_ACTUATOR_CONTROLS', blocking=False)
-            self.actOut = np.array([_actOut.controls[0], _actOut.controls[1], _actOut.controls[2], _actOut.controls[3]])
+            self.actOut = np.array([_actOut.controls[0] * self.maxT, _actOut.controls[1] * self.maxT, _actOut.controls[2] * self.maxT, _actOut.controls[3] * self.maxT])
             print(f"{self.actOut[0]:.2f}, {self.actOut[1]:.2f}, {self.actOut[2]:.2f}, {self.actOut[3]:.2f}")
         except:
             print("\n")

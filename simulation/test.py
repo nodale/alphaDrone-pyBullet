@@ -42,7 +42,7 @@ def main():
         qB.sendFakeOdometry()
 
         _time = int(time.time() * 1e6) & 0xFFFFFFFF
-        qB.sendPositionTarget(_time, 0.0, 0.0, 6.0)
+        qB.sendPositionTarget(_time, 0.0, 0.0, 3.0)
 
         qB.getActuatorOutput()
         qB.actuateVehicle()
