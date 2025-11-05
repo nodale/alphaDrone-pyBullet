@@ -26,7 +26,7 @@ class QuickMav:
         try:
             print("sending heartbeat")
             self.master.mav.heartbeat_send(
-                    mavutil.mavlink.MAV_TYPE_QUADROTOR,      # or MAV_TYPE_GENERIC
+                    mavutil.mavlink.MAV_TYPE_GENERIC,      # or MAV_TYPE_GENERIC, used to be QUADCOPTER
                     mavutil.mavlink.MAV_AUTOPILOT_INVALID,   # still fine
                     0,                                       # base_mode
                     0,                                       # custom_mode
@@ -121,14 +121,25 @@ class QuickMav:
                 )
 
     def sendPositionTarget(self, time, x, y, z): 
+#        self.master.mav.set_position_target_local_ned_send(
+#                time,
+#                self.master.target_system,
+#                self.master.target_component,
+#                mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+#                0b0000111111111000,
+#                x, y, z,  #position
+#                0, 0, 0,  #velocity
+#                0, 0, 0,  #acceleration
+#                0, 0  #yaw yaw_rate
+#               )
         self.master.mav.set_position_target_local_ned_send(
                 time,
                 self.master.target_system,
                 self.master.target_component,
-                mavutil.mavlink.MAV_FRAME_LOCAL_NED,
-                0b0000111111111000,
-                x, y, z,  #position
-                0, 0, 0,  #velocity
-                0, 0, 0,  #acceleration
-                0, 0  #yaw yaw_rate
+                mavutil.mavlink.MAV_FRAME_LOCAL_NED,  # PX4 accepts LOCAL_NED or BODY_NED
+                0b0000111111111000,  # use position only (ignore vel, acc, yaw, yaw_rate)
+                x, y, z,             # position (in meters, NED frame)
+                0, 0, 0,             # velocity
+                0, 0, 0,             # acceleration
+                0, 0                 # yaw, yaw_rate
                 )

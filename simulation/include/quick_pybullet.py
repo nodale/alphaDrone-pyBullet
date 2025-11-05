@@ -209,7 +209,7 @@ class QuickBullet(QuickBezier):
     def actuateVehicle(self):
 
         #this will be replaced by actuator output from PX4
-        _target_rpms = [-500, 500, -500, 500] 
+        _target_rpms = [500, 500, 500, 500] 
         #this will be replaced accordingly
         self.maxTorque = [5, 5, 5, 5]  
 
