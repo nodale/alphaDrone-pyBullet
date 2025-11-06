@@ -12,7 +12,8 @@ import math
 
 @dataclass
 class QuickBullet(QuickBezier):
-    maxT : float = 7.0
+    maxT : float = 7
+    text_id : None = None
 
     def __init__(self, address='localhost:14550', baudrate=57600, modelPath='urdf/preBetaDrone.urdf', worldPath='plane.urdf', **kwargs):
         super().__init__(address=address, baudrate=baudrate, **kwargs)
@@ -35,11 +36,17 @@ class QuickBullet(QuickBezier):
 
         print("simulation initialisation is done successfully\n")
 
+    def reset(self):
+        p.resetBasePositionAndOrientation(bodyUniqueId=self.object, 
+                                          posObj=[0, 0, 0.5],
+                                          ornObj=p.getQuaternionFromEuler([0, 0, 0]))
+
     def initSimState(self):
         self.simPos, self.simQ = p.getBasePositionAndOrientation(self.object)
         self.simQ = (self.simQ[3], self.simQ[0], self.simQ[1], self.simQ[2])
         self.simVel, self.simAngVel = p.getBaseVelocity(self.object)
-
+        self.simRot = (0.0, 0.0, 0.0)
+    
         self.simPosP, self.simQP = p.getBasePositionAndOrientation(self.object)
         self.simVelP, self.simAngVelP = p.getBaseVelocity(self.object)
 
@@ -52,6 +59,9 @@ class QuickBullet(QuickBezier):
         self.thrustVect = np.zeros([4,3])
         self.actOut = np.empty(4)
 
+
+        self._temp_pos = np.empty(3)
+
     def getSimState(self):
         self.simPosP, self.simQP = self.simPos, self.simQ
         self.simVelP, self.simAngVelP = self.simVel, self.simAngVel
@@ -59,6 +69,10 @@ class QuickBullet(QuickBezier):
         self.simPos, self.simQ = p.getBasePositionAndOrientation(self.object)
         self.simQ = (self.simQ[3], self.simQ[0], self.simQ[1], self.simQ[2])
         self.simVel, self.simAngVel = p.getBaseVelocity(self.object)
+        
+        self.simRot = self.q2euler(self.simQ[0], self.simQ[1], self.simQ[2], self.simQ[3])
+        #print(f"{_r:.2f}, {_p:.2f}, {_y:.2f}")
+        #print(f"{self.simAngVel[0]:.2f}, {self.simAngVel[1]:.2f}, {self.simAngVel[2]:.2f}")
 
         self.timeC = time.time()
         self.dt = self.timeC - self.timeP
@@ -87,7 +101,7 @@ class QuickBullet(QuickBezier):
         _R = np.array(p.getMatrixFromQuaternion(self.simQ)).reshape(3,3)
         _accWorld = (np.array(self.simVel) - np.array(self.simVelP)) / self.dt
         self.simAcc = _R.T @ (_accWorld - self.accField)
-
+    
         #addNoise(self.simAcc)
 
     def getGyroscope(self):
@@ -107,13 +121,23 @@ class QuickBullet(QuickBezier):
         self.simBaro = 101325 * (1 - 2.25577e-5 * self.simPos[2])**5.25588
 
     def sendSimSensors(self):
+        #self.master.mav.hil_sensor_send(
+        #    int(time.time() * 1e6) & 0xFFFFFFFF,
+        #    self.simAcc[0], self.simAcc[1], self.simAcc[2],
+        #    self.simGyro[0], self.simGyro[1], self.simGyro[2],
+        #    0, 0, 0,
+        #    self.simBaro, 0,
+        #    self.simPos[2], 28.5,
+        #    0xFF
+        #    )
+
         self.master.mav.hil_sensor_send(
-            int(time.time()*1e6),
+            int(time.time() * 1e6) & 0xFFFFFFFF,
             self.simAcc[0], self.simAcc[1], self.simAcc[2],
             self.simGyro[0], self.simGyro[1], self.simGyro[2],
             0, 0, 0,
-            self.simBaro, 0,
-            self.simPos[2], 28.5,
+            0, 0,
+            0, 0,
             0xFF
             )
 
@@ -171,74 +195,106 @@ class QuickBullet(QuickBezier):
     def getActuatorOutput(self):
         try:
             _actOut = self.master.recv_match(type='HIL_ACTUATOR_CONTROLS', blocking=False)
-            self.actOut = np.array([_actOut.controls[0] * self.maxT, _actOut.controls[1] * self.maxT, _actOut.controls[2] * self.maxT, _actOut.controls[3] * self.maxT])
-            print(f"{self.actOut[0]:.2f}, {self.actOut[1]:.2f}, {self.actOut[2]:.2f}, {self.actOut[3]:.2f}")
+            self.actOut = np.array([_actOut.controls[0] , _actOut.controls[1] , _actOut.controls[2] , _actOut.controls[3] ])
+            #print(f"{self.actOut[0]:.2f}, {self.actOut[1]:.2f}, {self.actOut[2]:.2f}, {self.actOut[3]:.2f}")
         except:
-            print("\n")
+            self.actOut = self.actOut
 
     def actuateFakeVehicle(self):
 
-        propeller_joints = [0, 1, 2, 3]  
-        target_rpms = [2000, 2000, 2000, 2000] 
-        max_torque = [5, 5, 5, 5]  
-
-        self.thrustVect[0][2] = 4
-        self.thrustVect[1][2] = 4
-        self.thrustVect[2][2] = 4
-        self.thrustVect[3][2] = 4
-
-        target_velocities = [rpm * 2 * 3.1416 / 60 for rpm in target_rpms]
-
-        p.setJointMotorControlArray(
-                bodyIndex=self.object,
-                jointIndices=self.propellerJoints,
-                controlMode=p.VELOCITY_CONTROL,
-                targetVelocities=target_velocities,
-                forces=max_torque
-                )
-
-        for i, joint in enumerate(self.propellerJoints):
-            prop_pos, prop_orn = p.getLinkState(self.object, joint)[0:2]
-
-
-            p.applyExternalForce(
-                    objectUniqueId=self.object,
-                    linkIndex=joint,
-                    forceObj=self.thrustVect[i],
-                    posObj=prop_pos,
-                    flags=p.LINK_FRAME
-                    )
-
-
-    def actuateVehicle(self):
-
-        #this will be replaced by actuator output from PX4
-        _target_rpms = [500, 500, 500, 500] 
-        #this will be replaced accordingly
-        self.maxTorque = [5, 5, 5, 5]  
-
-        target_velocities = [rpm * 2 * 3.1416 / 60 for rpm in _target_rpms]
-
-        p.setJointMotorControlArray(
-                bodyIndex=self.object,
-                jointIndices=self.propellerJoints,
-                controlMode=p.VELOCITY_CONTROL,
-                targetVelocities=target_velocities,
-                forces=self.maxTorque
-                )
-
-
         for _i, _joint in enumerate(self.propellerJoints):
             _pPos, _pRot = p.getLinkState(self.object, _joint)[0:2]
-
             #this will be replaced with a model
-            _thrust_vector = [0, 0, self.actOut[_i]] 
+            _temp = 4.0
+            _temp = max(0.0, _temp)
+            _temp *= (-1)**_i
+            _thrust_vector = [0.0, 0.0, _temp] 
 
             p.applyExternalForce(
-                    objectUniqueId=self.object,
-                    linkIndex=_joint,
-                    forceObj=_thrust_vector,
-                    posObj=_pPos,
-                    flags=p.LINK_FRAME
-                    )
+                objectUniqueId=self.object,
+                linkIndex=_joint,
+                forceObj=_thrust_vector,
+                posObj=_pPos,
+                flags=p.LINK_FRAME
+                )
 
+    def actuateVehicle(self):
+        _act_sq = np.array(self.actOut)
+        print(_act_sq)
+
+        _KF = self.maxT
+        _KM = 0.11    
+
+        _forces = _act_sq * _KF
+        _torques = _act_sq * _KM
+
+        _arm_length = 0.158  
+        _positions = np.array([
+            [ _arm_length, -_arm_length, 0],  
+            [ _arm_length,  _arm_length, 0],  
+            [-_arm_length,  _arm_length, 0],  
+            [-_arm_length, -_arm_length, 0],  
+        ])
+
+        _spin_dir = np.array([-1, 1, -1, 1])
+
+        _total_force = np.zeros(3)
+        _total_torque = np.zeros(3)
+
+        for i in range(4):
+            f_i = np.array([0, 0, _forces[i]])
+
+            tau_z = np.array([0, 0, _spin_dir[i] * _torques[i]])
+
+            tau_arm = np.cross(_positions[i], f_i)
+
+            _total_force += f_i
+            _total_torque += tau_arm + tau_z
+
+        p.applyExternalForce(
+            objectUniqueId=self.object,
+            linkIndex=-1,
+            forceObj=_total_force.tolist(),
+            posObj=[0, 0, 0],
+            flags=p.LINK_FRAME,
+        )
+
+        p.applyExternalTorque(
+            objectUniqueId=self.object,
+            linkIndex=-1,
+            torqueObj=_total_torque.tolist(),
+            flags=p.LINK_FRAME,
+        )
+
+    def q2euler(self, w, x, y, z):
+        sinr_cosp = 2 * (w * x + y * z)
+        cosr_cosp = 1 - 2 * (x * x + y * y)
+        roll = math.atan2(sinr_cosp, cosr_cosp)
+
+        sinp = 2 * (w * y - z * x)
+        if abs(sinp) >= 1:
+            pitch = math.copysign(math.pi / 2, sinp)
+        else:
+            pitch = math.asin(sinp)
+
+        siny_cosp = 2 * (w * z + x * y)
+        cosy_cosp = 1 - 2 * (y * y + z * z)
+        yaw = math.atan2(siny_cosp, cosy_cosp)
+
+        return (roll, pitch, yaw)
+
+    def showState(self):
+        _text = (
+            f"Pos [m]:     x={self.simPos[0]:+.3f}, y={self.simPos[1]:+.3f}, z={self.simPos[2]:+.3f}\n"
+            f"Euler [deg]: roll={self.simRot[0]:+.1f}, pitch={self.simRot[1]:+.1f}, yaw={self.simRot[2]:+.1f}\n"
+            f"Lin vel [m/s]: vx={self.simVel[0]:+.3f}, vy={self.simVel[1]:+.3f}, vz={self.simVel[2]:+.3f}\n"
+            f"Ang vel [rad/s]: wx={self.simAngVel[0]:+.3f}, wy={self.simAngVel[1]:+.3f}, wz={self.simAngVel[2]:+.3f}"
+        )
+
+        # --- Remove old text and add new one ---
+        if self.text_id is not None:
+            p.removeUserDebugItem(self.text_id)
+
+        self.text_id = p.addUserDebugText(
+            _text, [0.2, 0.2, 1.5], textColorRGB=[0, 0, 0], textSize=1.2, lifeTime=0
+        )

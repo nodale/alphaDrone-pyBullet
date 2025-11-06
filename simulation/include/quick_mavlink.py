@@ -134,7 +134,7 @@ class QuickMav:
     def get(self, TYPE, block=True):
         return self.master.recv_match(type=TYPE, blocking=False)
 
-    def sendOdometry(self, time, pos, q, vel, rotRates, cov1=[0.002]*21, cov2=[0.002]*21):
+    def sendOdometry(self, time, pos, q, vel, rotRates, cov1=[0.1]*21, cov2=[0.1]*21):
         vodom = mavlink2.MAVLink_odometry_message(
                 time,
                 mavutil.mavlink.MAV_FRAME_LOCAL_NED,
