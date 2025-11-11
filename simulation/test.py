@@ -31,7 +31,7 @@ def main():
     qB.initTertiaryCom(address='udpout:localhost:14540', baudrate=57600) 
 
     qB.resetLogFiles()
-    qB.freq = 400.0
+    qB.freq = 2000.0
     p.setTimeStep(1.0/qB.freq)
 
     qB.pVel = 0.1
@@ -45,7 +45,7 @@ def main():
         button_value = p.readUserDebugParameter(reset_button)
 
         qB.runSimpleSensorsSim()
-        qB.sendFakeOdometry()
+        #qB.sendFakeOdometry()
 
         _time = int(time.time() * 1e6) & 0xFFFFFFFF
         qB.sendPositionTarget(_time, 0.0, 0.0, 2.5)
