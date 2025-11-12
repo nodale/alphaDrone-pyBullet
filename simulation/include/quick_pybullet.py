@@ -14,7 +14,7 @@ import math
 class QuickBullet(QuickBezier):
     maxT : float = 25.0
     text_id : None = None
-    alpha : float = 0.02
+    alpha : float = 0.2
 
     def __init__(self, address='localhost:14550', baudrate=57600, modelPath='urdf/preBetaDrone.urdf', worldPath='plane.urdf', **kwargs):
         super().__init__(address=address, baudrate=baudrate, **kwargs)
@@ -80,11 +80,11 @@ class QuickBullet(QuickBezier):
         self.simVel = R_wb.T @ self.simVel
 
         #change coordinate
-        self.simRot = self.q2euler(self.simQ[3], self.simQ[0], -self.simQ[1], -self.simQ[2])
-        self.simQ = (self.simQ[0], -self.simQ[1], -self.simQ[2], self.simQ[3])
-        self.simAngVel = (self.simAngVel[0], -self.simAngVel[1], -self.simAngVel[2])
-        self.simPos = (self.simPos[0], -self.simPos[1], -self.simPos[2])
-        self.simVel = (self.simVel[0], -self.simVel[1], -self.simVel[2])
+        self.simRot = self.q2euler(self.simQ[3], self.simQ[0], -self.simQ[1], self.simQ[2])
+        self.simQ = (self.simQ[0], -self.simQ[1], self.simQ[2], self.simQ[3])
+        self.simAngVel = (self.simAngVel[0], -self.simAngVel[1], self.simAngVel[2])
+        self.simPos = (self.simPos[0], -self.simPos[1], self.simPos[2])
+        self.simVel = (self.simVel[0], -self.simVel[1], self.simVel[2])
 
         self.timeC = time.time()
         self.dt = self.timeC - self.timeP
@@ -121,7 +121,7 @@ class QuickBullet(QuickBezier):
         #acc_body = R_wb.T @ (acc_world - np.array(self.accField))
 
         #self.simAcc = acc_body
-        #self.simAccLPF = self.alpha * self.simAcc + (1.0 - self.alpha) * self.simAccLPF
+        self.simAccLPF = self.alpha * self.simAcc + (1.0 - self.alpha) * self.simAccLPF
         #self.addNoise(self.simAcc)
 
     def getGyroscope(self):
@@ -160,7 +160,7 @@ class QuickBullet(QuickBezier):
 
         self.master.mav.hil_sensor_send(
                 int(time.time() * 1e6) & 0xFFFFFFFF,
-                self.simAcc[0], self.simAcc[1], self.simAcc[2],
+                self.simAccLPF[0], self.simAccLPF[1], self.simAccLPF[2],
                 self.simGyro[0], self.simGyro[1], self.simGyro[2],
                 0, 0, 0,
                 0, 0,
@@ -288,7 +288,7 @@ class QuickBullet(QuickBezier):
             [-_arm_length, -_arm_length, 0],  
             ])
 
-        _spin_dir = np.array([-1, 1, -1, 1])
+        _spin_dir = np.array([1, -1, 1, -1])
 
         _total_force = np.zeros(3)
         _total_torque = np.zeros(3)
