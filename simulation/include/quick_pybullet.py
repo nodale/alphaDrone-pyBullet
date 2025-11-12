@@ -14,7 +14,7 @@ import math
 class QuickBullet(QuickBezier):
     maxT : float = 25.0
     text_id : None = None
-    alpha : float = 0.2
+    alpha : float = 0.0
 
     def __init__(self, address='localhost:14550', baudrate=57600, modelPath='urdf/preBetaDrone.urdf', worldPath='plane.urdf', **kwargs):
         super().__init__(address=address, baudrate=baudrate, **kwargs)
@@ -271,71 +271,104 @@ class QuickBullet(QuickBezier):
                     flags=p.LINK_FRAME
                     )
 
+#    def actuateVehicle(self):
+#        _act_sq = np.array(self.actOut)
+#
+#        _KF = self.maxT
+#        _KM = 0.11 * self.maxT   
+#
+#        _forces = _act_sq * _KF
+#        _torques = _act_sq * _KM
+#
+#        _arm_length = 0.158  
+#        #this one is in pyBullet's coordinate sys
+#        _positions = np.array([
+#            [ _arm_length, -_arm_length, 0],  
+#            [ _arm_length, _arm_length, 0],  
+#            [-_arm_length, _arm_length, 0],  
+#            [-_arm_length, -_arm_length, 0],  
+#            ])
+#
+#        _spin_dir = np.array([1, -1, 1, -1])
+#
+#        _total_force = np.zeros(3)
+#        _total_torque = np.zeros(3)
+#
+#        for i in range(4):
+#            f_i = np.array([0, 0, _forces[i]])
+#
+#            tau_z = np.array([0, 0, _spin_dir[i] * _torques[i]])
+#
+#            tau_arm = np.cross(_positions[i], f_i)
+#
+#            _total_force += f_i
+#            _total_torque += tau_arm + tau_z
+#
+#        _, quat = p.getBasePositionAndOrientation(self.object)
+#        R_wb = np.array(p.getMatrixFromQuaternion(quat)).reshape(3, 3)
+#        _total_force_body = R_wb.T @ _total_force
+#        _total_torque_body = R_wb.T @ _total_torque
+#
+#        p.applyExternalForce(
+#            self.object, -1,
+#            forceObj=_total_force_body.tolist(),
+#            posObj=[0, 0, 0],
+#            flags=p.LINK_FRAME,
+#        )
+#
+#        p.applyExternalTorque(
+#            self.object, -1,
+#            torqueObj=_total_torque_body.tolist(),
+#            flags=p.LINK_FRAME,
+#        )
+
     def actuateVehicle(self):
         _act_sq = np.array(self.actOut)
 
         _KF = self.maxT
-        _KM = 0.11 * self.maxT   
+        _KM = 0.11 * self.maxT
 
+        # Thrust and torque per motor
         _forces = _act_sq * _KF
         _torques = _act_sq * _KM
 
-        _arm_length = 0.158  
-        #this one is in pyBullet's coordinate sys
+        _arm_length = 0.158
+        # Motor positions in body frame (PyBullet coordinates)
         _positions = np.array([
-            [ _arm_length, -_arm_length, 0],  
-            [ _arm_length, _arm_length, 0],  
-            [-_arm_length, _arm_length, 0],  
-            [-_arm_length, -_arm_length, 0],  
-            ])
+            [ _arm_length, -_arm_length, 0],   # Front right
+            [ _arm_length,  _arm_length, 0],   # Front left
+            [-_arm_length,  _arm_length, 0],   # Rear left
+            [-_arm_length, -_arm_length, 0],   # Rear right
+        ])
 
+        # Spin directions: +1 for CCW, -1 for CW
         _spin_dir = np.array([1, -1, 1, -1])
 
-        _total_force = np.zeros(3)
-        _total_torque = np.zeros(3)
-
-        for i in range(4):
-            f_i = np.array([0, 0, _forces[i]])
-
-            tau_z = np.array([0, 0, _spin_dir[i] * _torques[i]])
-
-            tau_arm = np.cross(_positions[i], f_i)
-
-            _total_force += f_i
-            _total_torque += tau_arm + tau_z
-
+        # Get world rotation of the body
         _, quat = p.getBasePositionAndOrientation(self.object)
         R_wb = np.array(p.getMatrixFromQuaternion(quat)).reshape(3, 3)
-        _total_force_body = R_wb.T @ _total_force
-        _total_torque_body = R_wb.T @ _total_torque
 
-        p.applyExternalForce(
-            self.object, -1,
-            forceObj=_total_force_body.tolist(),
-            posObj=[0, 0, 0],
-            flags=p.LINK_FRAME,
-        )
+        # Apply each rotor's thrust and torque at its position in the body frame
+        for i in range(4):
+            # Force in the body frame (thrust along +Z body)
+            f_body = np.array([0, 0, _forces[i]])
 
-        p.applyExternalTorque(
-            self.object, -1,
-            torqueObj=_total_torque_body.tolist(),
-            flags=p.LINK_FRAME,
-        )
+            # Reaction torque about body Z due to motor spin
+            tau_body = np.array([0, 0, _spin_dir[i] * _torques[i]])
 
-        #p.applyExternalForce(
-        #        objectUniqueId=self.object,
-        #        linkIndex=-1,
-        #        forceObj=_total_force.tolist(),
-        #        posObj=[0, 0, 0],
-        #        flags=p.LINK_FRAME,
-        #        )
+            # Apply both directly at motor position in LINK_FRAME
+            p.applyExternalForce(
+                self.object, -1,
+                forceObj=f_body.tolist(),
+                posObj=_positions[i].tolist(),
+                flags=p.LINK_FRAME,
+            )
 
-        #p.applyExternalTorque(
-        #        objectUniqueId=self.object,
-        #        linkIndex=-1,
-        #        torqueObj=_total_torque.tolist(),
-        #        flags=p.LINK_FRAME,
-        #        )
+            p.applyExternalTorque(
+                self.object, -1,
+                torqueObj=tau_body.tolist(),
+                flags=p.LINK_FRAME,
+            )
 
     def q2euler(self, w, x, y, z):
         sinr_cosp = 2 * (w * x + y * z)
