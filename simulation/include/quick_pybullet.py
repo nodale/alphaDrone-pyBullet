@@ -111,9 +111,10 @@ class QuickBullet(QuickBezier):
         obj += np.random.normal(center, amplitude, dim) 
 
     def getAccelerometer(self):
-        #_R = np.array(p.getMatrixFromQuaternion(self.simQ)).reshape(3,3)
+        _R = np.array(p.getMatrixFromQuaternion(self.simQ)).reshape(3,3)
         _accWorld = (np.array(self.simVel) - np.array(self.simVelP)) / self.dt
-        self.simAcc = _accWorld + self.accField
+        _transgravity = _R.T @ self.accField 
+        self.simAcc = _accWorld + _transgravity
 
         #R_wb = np.array(p.getMatrixFromQuaternion(self.simQ)).reshape(3, 3)
         #acc_world = (np.array(self.simVel) - np.array(self.simVelP)) / self.dt
@@ -121,7 +122,7 @@ class QuickBullet(QuickBezier):
         #acc_body = R_wb.T @ (acc_world - np.array(self.accField))
 
         #self.simAcc = acc_body
-        self.simAccLPF = self.alpha * self.simAcc + (1.0 - self.alpha) * self.simAccLPF
+        #self.simAccLPF = self.alpha * self.simAcc + (1.0 - self.alpha) * self.simAccLPF
         #self.addNoise(self.simAcc)
 
     def getGyroscope(self):
@@ -160,7 +161,7 @@ class QuickBullet(QuickBezier):
 
         self.master.mav.hil_sensor_send(
                 int(time.time() * 1e6) & 0xFFFFFFFF,
-                self.simAccLPF[0], self.simAccLPF[1], self.simAccLPF[2],
+                self.simAcc[0], self.simAcc[1], self.simAcc[2],
                 self.simGyro[0], self.simGyro[1], self.simGyro[2],
                 0, 0, 0,
                 0, 0,
