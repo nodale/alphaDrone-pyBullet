@@ -31,7 +31,7 @@ def main():
     qB.initTertiaryCom(address='udpout:localhost:14540', baudrate=57600) 
 
     qB.resetLogFiles()
-    qB.freq = 2000.0
+    qB.freq = 200.0
     p.setTimeStep(1.0/qB.freq)
 
     qB.pVel = 0.1
