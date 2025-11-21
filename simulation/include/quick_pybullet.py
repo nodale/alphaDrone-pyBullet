@@ -12,7 +12,7 @@ import math
 
 @dataclass
 class QuickBullet(QuickBezier):
-    maxT : float = 9.81
+    maxT : float = 8.83
     text_id : None = None
     alpha : float = 0.2
 
@@ -26,7 +26,7 @@ class QuickBullet(QuickBezier):
 
         p.setGravity(self.accField[0], self.accField[1], self.accField[2])
         _planeId = p.loadURDF(worldPath)
-        _startPos = [0,0,0.2]
+        _startPos = [0,0,0.4]
         _startOrientation = p.getQuaternionFromEuler([0,0,0])
 
         self.object = p.loadURDF(modelPath, _startPos, _startOrientation)
@@ -80,11 +80,11 @@ class QuickBullet(QuickBezier):
         self.simVel = R_wb.T @ self.simVel
 
         #change coordinate
-        self.simRot = self.q2euler(self.simQ[3], self.simQ[0], -self.simQ[1], self.simQ[2])
-        self.simQ = (self.simQ[0], -self.simQ[1], self.simQ[2], self.simQ[3])
-        self.simAngVel = (self.simAngVel[0], -self.simAngVel[1], self.simAngVel[2])
-        self.simPos = (self.simPos[0], -self.simPos[1], self.simPos[2])
-        self.simVel = (self.simVel[0], -self.simVel[1], self.simVel[2])
+        self.simRot = self.q2euler(self.simQ[3], self.simQ[0], -self.simQ[1], -self.simQ[2])
+        self.simQ = (self.simQ[0], -self.simQ[1], -self.simQ[2], self.simQ[3])
+        self.simAngVel = (self.simAngVel[0], -self.simAngVel[1], -self.simAngVel[2])
+        self.simPos = (self.simPos[0], -self.simPos[1], -self.simPos[2])
+        self.simVel = (self.simVel[0], -self.simVel[1], -self.simVel[2])
 
         self.timeC = time.time()
         self.dt = self.timeC - self.timeP

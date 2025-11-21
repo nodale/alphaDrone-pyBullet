@@ -36,7 +36,7 @@ def main():
     #qB.initTertiaryCom(address='udpout:localhost:14550', baudrate=57600) 
 
     qB.resetLogFiles()
-    qB.freq = 400.0
+    qB.freq = 250.0
     p.setTimeStep(1.0/qB.freq)
 
     qB.pVel = 0.1
@@ -55,7 +55,7 @@ def main():
         time.sleep(1.0/qB.freq)
 
         _time = int(time.time() * 1e6) & 0xFFFFFFFF
-        qB.sendPositionTarget(_time, 0.0, 0.0, 2.5)
+        qB.sendPositionTarget(_time, 0.0, 0.0, -2.5)
 
         qB.getActuatorOutput()
         qB.actuateVehicle()
