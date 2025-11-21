@@ -14,10 +14,13 @@ import time, sys, select
 #        qB.sendFakeOdometry()
 #
 #        _time = int(time.time() * 1e6) & 0xFFFFFFFF
-#        qB.sendPositionTarget(_time, 0.0, 0.0, 30.0)
+#        qB.sendPositionTarget(_time, 0.0, 0.0, 2.5)
 #
+#        qB.getActuatorOutput()
+#        qB.actuateVehicle()
 #        p.stepSimulation()
-#        time.sleep(1/qB.freq)
+#
+#        time.sleep(1.0/qB.freq)
 #        if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:   
 #            _line = sys.stdin.readline()
 #            if _line.strip() == "":
@@ -27,11 +30,13 @@ import time, sys, select
 
 def main():
     qB = QuickBullet(address='tcpin:localhost:4560', baudrate=57600)
-    qB.initSecondaryCom(address='udpin:localhost:14540', baudrate=57600) #'udpin:localhost:14540' 
-    qB.initTertiaryCom(address='udpout:localhost:14540', baudrate=57600) 
+
+    #this udpout might be a problem for the lockstep sitl
+    qB.initSecondaryCom(address='udpout:localhost:14580', baudrate=57600) #'udpin:localhost:14540' 
+    #qB.initTertiaryCom(address='udpout:localhost:14550', baudrate=57600) 
 
     qB.resetLogFiles()
-    qB.freq = 200.0
+    qB.freq = 400.0
     p.setTimeStep(1.0/qB.freq)
 
     qB.pVel = 0.1
@@ -45,7 +50,9 @@ def main():
         button_value = p.readUserDebugParameter(reset_button)
 
         qB.runSimpleSensorsSim()
-        #qB.sendFakeOdometry()
+        qB.sendFakeOdometry()
+
+        time.sleep(1.0/qB.freq)
 
         _time = int(time.time() * 1e6) & 0xFFFFFFFF
         qB.sendPositionTarget(_time, 0.0, 0.0, 2.5)
@@ -54,7 +61,6 @@ def main():
         qB.actuateVehicle()
         p.stepSimulation()
     
-        time.sleep(1.0/qB.freq)
         #qB.showState()
         if button_value == 1:
             reset_button = p.addUserDebugParameter("reset", 1, 0, 0)

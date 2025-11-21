@@ -12,9 +12,9 @@ import math
 
 @dataclass
 class QuickBullet(QuickBezier):
-    maxT : float = 25.0
+    maxT : float = 9.81
     text_id : None = None
-    alpha : float = 0.0
+    alpha : float = 0.2
 
     def __init__(self, address='localhost:14550', baudrate=57600, modelPath='urdf/preBetaDrone.urdf', worldPath='plane.urdf', **kwargs):
         super().__init__(address=address, baudrate=baudrate, **kwargs)
@@ -51,10 +51,10 @@ class QuickBullet(QuickBezier):
         self.simPosP, self.simQP = p.getBasePositionAndOrientation(self.object)
         self.simVelP, self.simAngVelP = p.getBaseVelocity(self.object)
 
-        self.simAcc = np.zeros(3)
-        self.simGyro = np.zeros(3)
-        self.simAccLPF = np.zeros(3)
-        self.simGyroLPF = np.zeros(3)
+        self.simAcc = np.zeros(3, dtype=float)
+        self.simGyro = np.zeros(3, dtype=float)
+        self.simAccLPF = np.zeros(3, dtype=float)
+        self.simGyroLPF = np.zeros(3, dtype=float)
 
         self.timeC = time.time()
         self.timeP = time.time()
@@ -122,10 +122,12 @@ class QuickBullet(QuickBezier):
         #acc_body = R_wb.T @ (acc_world - np.array(self.accField))
 
         #self.simAcc = acc_body
-        #self.simAccLPF = self.alpha * self.simAcc + (1.0 - self.alpha) * self.simAccLPF
+        self.simAccLPF = self.alpha * self.simAcc + (1.0 - self.alpha) * self.simAccLPF
         #self.addNoise(self.simAcc)
 
     def getGyroscope(self):
+        self.simGyro = np.array(self.simAngVel)
+
         #_R = np.array(p.getMatrixFromQuaternion(self.simQ)).reshape(3,3)
         #self.simGyro = _R.T @ np.array(self.simAngVel)
         #R_wb = np.array(p.getMatrixFromQuaternion(self.simQ)).reshape(3, 3)
@@ -133,10 +135,8 @@ class QuickBullet(QuickBezier):
         #omega_world = (omega_world[0], -omega_world[1], -omega_world[2])
 
         #self.simGyro = R_wb.T @ omega_world
-        #self.simGyroLPF = self.alpha * self.simGyro + (1.0 - self.alpha) * self.simGyroLPF
+        self.simGyroLPF = self.alpha * self.simGyro + (1.0 - self.alpha) * self.simGyroLPF
         #self.addNoise(self.simGyro)
-
-        self.simGyro = self.simAngVel
 
     #probably not going to be used
     def getMagnetometer(self, magNED=np.array([0.2, 0.0, 0.5])):
@@ -161,8 +161,8 @@ class QuickBullet(QuickBezier):
 
         self.master.mav.hil_sensor_send(
                 int(time.time() * 1e6) & 0xFFFFFFFF,
-                self.simAcc[0], self.simAcc[1], self.simAcc[2],
-                self.simGyro[0], self.simGyro[1], self.simGyro[2],
+                self.simAccLPF[0], self.simAccLPF[1], self.simAccLPF[2],
+                self.simGyroLPF[0], self.simGyroLPF[1], self.simGyroLPF[2],
                 0, 0, 0,
                 0, 0,
                 0, 0,
@@ -234,6 +234,7 @@ class QuickBullet(QuickBezier):
     def sendFakeOdometry(self):
         _time = int(time.time() * 1e6)
         _reordered_q = (self.simQ[3], self.simQ[0], self.simQ[1], self.simQ[2])
+        #_reordered_pos = (-self.simPos[0], -self.simPos[1], self.simPos[2])
         self.sendOdometry(_time, self.simPos, _reordered_q, self.simVel, self.simAngVel)
 
     def runSimpleSensorsSim(self):
@@ -328,35 +329,30 @@ class QuickBullet(QuickBezier):
         _KF = self.maxT
         _KM = 0.11 * self.maxT
 
-        # Thrust and torque per motor
         _forces = _act_sq * _KF
         _torques = _act_sq * _KM
 
         _arm_length = 0.158
-        # Motor positions in body frame (PyBullet coordinates)
+        _x_offset = 0.00323
+        _y_offset = 0.001
+        _z_offset = -0.014
         _positions = np.array([
-            [ _arm_length, -_arm_length, 0],   # Front right
-            [ _arm_length,  _arm_length, 0],   # Front left
-            [-_arm_length,  _arm_length, 0],   # Rear left
-            [-_arm_length, -_arm_length, 0],   # Rear right
+            [ _arm_length - _x_offset, -_arm_length - _y_offset, 0.0 - _z_offset],   
+            [ _arm_length - _x_offset,  _arm_length - _y_offset, 0.0 - _z_offset],  
+            [-_arm_length - _x_offset,  _arm_length - _y_offset, 0.0 - _z_offset], 
+            [-_arm_length - _x_offset, -_arm_length - _y_offset, 0.0 - _z_offset], 
         ])
 
-        # Spin directions: +1 for CCW, -1 for CW
         _spin_dir = np.array([1, -1, 1, -1])
 
-        # Get world rotation of the body
         _, quat = p.getBasePositionAndOrientation(self.object)
         R_wb = np.array(p.getMatrixFromQuaternion(quat)).reshape(3, 3)
 
-        # Apply each rotor's thrust and torque at its position in the body frame
         for i in range(4):
-            # Force in the body frame (thrust along +Z body)
             f_body = np.array([0, 0, _forces[i]])
 
-            # Reaction torque about body Z due to motor spin
             tau_body = np.array([0, 0, _spin_dir[i] * _torques[i]])
 
-            # Apply both directly at motor position in LINK_FRAME
             p.applyExternalForce(
                 self.object, -1,
                 forceObj=f_body.tolist(),
