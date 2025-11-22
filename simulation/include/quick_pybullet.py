@@ -87,8 +87,8 @@ class QuickBullet(QuickBezier):
         self.simVel = (self.simVel[0], -self.simVel[1], -self.simVel[2])
 
         self.timeC = time.time()
-        self.dt = self.timeC - self.timeP
-        #self.dt = 1.0/self.freq
+        #self.dt = self.timeC - self.timeP
+        self.dt = 1.0/self.freq
         self.timeP = self.timeC
 
     #overwrites takeoff() from QuickBezier
@@ -122,8 +122,8 @@ class QuickBullet(QuickBezier):
         #acc_body = R_wb.T @ (acc_world - np.array(self.accField))
 
         #self.simAcc = acc_body
-        self.simAccLPF = self.alpha * self.simAcc + (1.0 - self.alpha) * self.simAccLPF
-        #self.addNoise(self.simAcc)
+        #self.simAccLPF = self.alpha * self.simAcc + (1.0 - self.alpha) * self.simAccLPF
+        self.addNoise(self.simAcc)
 
     def getGyroscope(self):
         self.simGyro = np.array(self.simAngVel)
@@ -135,8 +135,8 @@ class QuickBullet(QuickBezier):
         #omega_world = (omega_world[0], -omega_world[1], -omega_world[2])
 
         #self.simGyro = R_wb.T @ omega_world
-        self.simGyroLPF = self.alpha * self.simGyro + (1.0 - self.alpha) * self.simGyroLPF
-        #self.addNoise(self.simGyro)
+        #self.simGyroLPF = self.alpha * self.simGyro + (1.0 - self.alpha) * self.simGyroLPF
+        self.addNoise(self.simGyro)
 
     #probably not going to be used
     def getMagnetometer(self, magNED=np.array([0.2, 0.0, 0.5])):
@@ -161,8 +161,8 @@ class QuickBullet(QuickBezier):
 
         self.master.mav.hil_sensor_send(
                 int(time.time() * 1e6) & 0xFFFFFFFF,
-                self.simAccLPF[0], self.simAccLPF[1], self.simAccLPF[2],
-                self.simGyroLPF[0], self.simGyroLPF[1], self.simGyroLPF[2],
+                self.simAcc[0], self.simAcc[1], self.simAcc[2],
+                self.simGyro[0], self.simGyro[1], self.simGyro[2],
                 0, 0, 0,
                 0, 0,
                 0, 0,
@@ -327,7 +327,7 @@ class QuickBullet(QuickBezier):
         _act_sq = np.array(self.actOut)
 
         _KF = self.maxT
-        _KM = 0.11 * self.maxT
+        _KM = 0.09 * self.maxT
 
         _forces = _act_sq * _KF
         _torques = _act_sq * _KM

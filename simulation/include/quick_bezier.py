@@ -88,7 +88,7 @@ class QuickBezier(QuickState):
     def go2FirstCurve(self):
         print("press enter to engage bezier")
         while True:
-            self._updateRefeedState()
+            #self._updateRefeedState()
             _time = int(time.time() * 1e6) & 0xFFFFFFFF
             self.sendPositionTarget(_time, self.splineList[0].p0[0], self.splineList[0].p0[1], -1.0)
             self.show({'local position': self.pos})
@@ -100,7 +100,7 @@ class QuickBezier(QuickState):
                     break
 
     def traverseCurve(self):
-        self._updateRefeedState()
+        #self._updateRefeedState()
         self.getVelSetpoint()
         _currentTime = int(time.time() * 1e6) & 0xFFFFFFFF
         self.sendVelocityTarget(_currentTime, self.velCommand[0], self.velCommand[1], 0.0)
