@@ -179,6 +179,19 @@ class QuickMav:
                 0, 0  #yaw yaw_rate
                 )
 
+    def sendPlanarVelocityTarget(self, time, vx, vy, z): 
+        self.master2.mav.set_position_target_local_ned_send(
+                time,
+                self.master2.target_system,
+                self.master2.target_component,
+                mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+                0b0000111111100011,
+                0, 0, z,  #position
+                vx, vy, 0,  #velocity
+                0, 0, 0,  #acceleration
+                0, 0  #yaw yaw_rate
+                )
+
     def sendPositionTarget(self, time, x, y, z): 
         self.master2.mav.set_position_target_local_ned_send(
                 time,

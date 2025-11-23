@@ -18,7 +18,7 @@ def wait(qB):
         qB.sendPositionTarget(_time, 0.0, 0.0, -2.5)
 
         qB.getActuatorOutput()
-        #qB.actuateVehicle()
+        qB.actuateVehicle()
         p.stepSimulation()
 
         if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:   
@@ -45,7 +45,7 @@ def main():
     reset_button = p.addUserDebugParameter("reset", 1, 0, 0)
 
     wait(qB)
-    qB.go2FirstCurve()
+    #qB.go2FirstCurve()
 
     while True:
         button_value = p.readUserDebugParameter(reset_button)
@@ -56,7 +56,7 @@ def main():
         time.sleep(1.0/qB.freq)
 
         _time = int(time.time() * 1e6) & 0xFFFFFFFF
-        #qB.sendPositionTarget(_time, 0.0, 0.0, -2.5)
+        #qB.sendPlanarVelocityTarget(_time, 0.3, 0.0, -2.5)
         qB.traverseCurve()
 
         qB.getActuatorOutput()
@@ -70,7 +70,7 @@ def main():
 
         if qB.llp.closest_u >= 0.9:
             qB.genRandomCurve()
-            b.llp.transition()
+            qB.llp.transition()
 
 if __name__ == "__main__":
     main()

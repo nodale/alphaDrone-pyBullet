@@ -92,7 +92,6 @@ class QuickBezier(QuickState):
             _time = int(time.time() * 1e6) & 0xFFFFFFFF
             self.sendPositionTarget(_time, self.splineList[0].p0[0], self.splineList[0].p0[1], -1.0)
             self.show({'local position': self.pos})
-            time.sleep(1/self.freq)
             if sys.stdin in select.select([sys.stdin], [], [], 0)[0]:   
                 _line = sys.stdin.readline()
                 if _line.strip() == "":
@@ -103,8 +102,7 @@ class QuickBezier(QuickState):
         #self._updateRefeedState()
         self.getVelSetpoint()
         _currentTime = int(time.time() * 1e6) & 0xFFFFFFFF
-        self.sendVelocityTarget(_currentTime, self.velCommand[0], self.velCommand[1], 0.0)
-        time.sleep(1/self.freq)
+        self.sendPlanarVelocityTarget(_currentTime, self.velCommand[0], self.velCommand[1], -2.5)
         self.show({"local position": self.pos,
                   "closest point" : self.llp.closest_u
                    })

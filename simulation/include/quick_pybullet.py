@@ -43,13 +43,13 @@ class QuickBullet(QuickBezier):
                                           ornObj=p.getQuaternionFromEuler([0, 0, 0]))
 
     def initSimState(self):
-        self.simPos, self.simQ = p.getBasePositionAndOrientation(self.object)
-        #self.simQ = (self.simQ[3], self.simQ[0], self.simQ[1], self.simQ[2])
-        self.simVel, self.simAngVel = p.getBaseVelocity(self.object)
-        self.simRot = (0.0, 0.0, 0.0)
+        self.pos, self.q = p.getBasePositionAndOrientation(self.object)
+        #self.q = (self.q[3], self.q[0], self.q[1], self.q[2])
+        self.vel, self.rotRates = p.getBaseVelocity(self.object)
+        self.rot = (0.0, 0.0, 0.0)
 
-        self.simPosP, self.simQP = p.getBasePositionAndOrientation(self.object)
-        self.simVelP, self.simAngVelP = p.getBaseVelocity(self.object)
+        self.posP, self.qP = p.getBasePositionAndOrientation(self.object)
+        self.velP, self.rotRatesP = p.getBaseVelocity(self.object)
 
         self.simAcc = np.zeros(3, dtype=float)
         self.simGyro = np.zeros(3, dtype=float)
@@ -69,22 +69,22 @@ class QuickBullet(QuickBezier):
         self._temp_pos = np.empty(3)
 
     def getSimState(self):
-        self.simPosP, self.simQP = self.simPos, self.simQ
-        self.simVelP, self.simAngVelP = self.simVel, self.simAngVel
+        self.posP, self.qP = self.pos, self.q
+        self.velP, self.rotRatesP = self.vel, self.rotRates
 
-        self.simPos, self.simQ = p.getBasePositionAndOrientation(self.object)
-        #self.simQ = (self.simQ[3], self.simQ[0], self.simQ[1], self.simQ[2])
-        self.simVel, self.simAngVel = p.getBaseVelocity(self.object)
+        self.pos, self.q = p.getBasePositionAndOrientation(self.object)
+        #self.q = (self.q[3], self.q[0], self.q[1], self.q[2])
+        self.vel, self.rotRates = p.getBaseVelocity(self.object)
 
-        R_wb = np.array(p.getMatrixFromQuaternion(self.simQ)).reshape(3, 3)
-        self.simVel = R_wb.T @ self.simVel
+        R_wb = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3, 3)
+        self.vel = R_wb.T @ self.vel
 
         #change coordinate
-        self.simRot = self.q2euler(self.simQ[3], self.simQ[0], -self.simQ[1], -self.simQ[2])
-        self.simQ = (self.simQ[0], -self.simQ[1], -self.simQ[2], self.simQ[3])
-        self.simAngVel = (self.simAngVel[0], -self.simAngVel[1], -self.simAngVel[2])
-        self.simPos = (self.simPos[0], -self.simPos[1], -self.simPos[2])
-        self.simVel = (self.simVel[0], -self.simVel[1], -self.simVel[2])
+        self.rot = self.q2euler(self.q[3], self.q[0], -self.q[1], -self.q[2])
+        self.q = (self.q[0], -self.q[1], -self.q[2], self.q[3])
+        self.rotRates = (self.rotRates[0], -self.rotRates[1], -self.rotRates[2])
+        self.pos = (self.pos[0], -self.pos[1], -self.pos[2])
+        self.vel = (self.vel[0], -self.vel[1], -self.vel[2])
 
         self.timeC = time.time()
         #self.dt = self.timeC - self.timeP
@@ -104,21 +104,21 @@ class QuickBullet(QuickBezier):
         for i in range(200):
             _time = int(time.time() * 1e6) & 0xFFFFFFFF
             self.getSimState()
-            self.sendPositionTarget(_time, self.simPos[0], self.simPos[1], z)
+            self.sendPositionTarget(_time, self.pos[0], self.pos[1], z)
             time.sleep(1/self.freq)
 
     def addNoise(self, obj, center=0.0, amplitude=0.008, dim=3):
         obj += np.random.normal(center, amplitude, dim) 
 
     def getAccelerometer(self):
-        _R = np.array(p.getMatrixFromQuaternion(self.simQ)).reshape(3,3)
-        _accWorld = (np.array(self.simVel) - np.array(self.simVelP)) / self.dt
+        _R = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3,3)
+        _accWorld = (np.array(self.vel) - np.array(self.velP)) / self.dt
         _transgravity = _R.T @ self.accField 
         self.simAcc = _accWorld + _transgravity
 
-        #R_wb = np.array(p.getMatrixFromQuaternion(self.simQ)).reshape(3, 3)
-        #acc_world = (np.array(self.simVel) - np.array(self.simVelP)) / self.dt
-        #self.simVelP = self.simVel
+        #R_wb = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3, 3)
+        #acc_world = (np.array(self.vel) - np.array(self.velP)) / self.dt
+        #self.velP = self.vel
         #acc_body = R_wb.T @ (acc_world - np.array(self.accField))
 
         #self.simAcc = acc_body
@@ -126,12 +126,12 @@ class QuickBullet(QuickBezier):
         self.addNoise(self.simAcc)
 
     def getGyroscope(self):
-        self.simGyro = np.array(self.simAngVel)
+        self.simGyro = np.array(self.rotRates)
 
-        #_R = np.array(p.getMatrixFromQuaternion(self.simQ)).reshape(3,3)
-        #self.simGyro = _R.T @ np.array(self.simAngVel)
-        #R_wb = np.array(p.getMatrixFromQuaternion(self.simQ)).reshape(3, 3)
-        #omega_world = np.array(self.simAngVel)
+        #_R = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3,3)
+        #self.simGyro = _R.T @ np.array(self.rotRates)
+        #R_wb = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3, 3)
+        #omega_world = np.array(self.rotRates)
         #omega_world = (omega_world[0], -omega_world[1], -omega_world[2])
 
         #self.simGyro = R_wb.T @ omega_world
@@ -140,13 +140,13 @@ class QuickBullet(QuickBezier):
 
     #probably not going to be used
     def getMagnetometer(self, magNED=np.array([0.2, 0.0, 0.5])):
-        _R = np.array(p.getMatrixFromQuaternion(self.simQ)).reshape(3,3)
+        _R = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3,3)
         self.simMag = _R.T @ magNED
 
         #addNoise(self.simMag)
 
     def getBarometer(self):
-        self.simBaro = 101325 * (1 - 2.25577e-5 * self.simPos[2])**5.25588
+        self.simBaro = 101325 * (1 - 2.25577e-5 * self.pos[2])**5.25588
 
     def sendSimSensors(self):
         #self.master.mav.hil_sensor_send(
@@ -155,7 +155,7 @@ class QuickBullet(QuickBezier):
         #    self.simGyro[0], self.simGyro[1], self.simGyro[2],
         #    0, 0, 0,
         #    self.simBaro, 0,
-        #    self.simPos[2], 28.5,
+        #    self.pos[2], 28.5,
         #    0xFF
         #    )
 
@@ -173,11 +173,11 @@ class QuickBullet(QuickBezier):
         _lat0, _lon0, _alt0 = 47.397742, 8.545594, 500
 
         _r = 6378137.0 
-        _dlat = self.simPos[1] / _r
-        _dlon = self.simPos[0] / (_r * math.cos(math.radians(_lat0)))
+        _dlat = self.pos[1] / _r
+        _dlon = self.pos[0] / (_r * math.cos(math.radians(_lat0)))
         _lat = _lat0 + math.degrees(_dlat)
         _lon = _lon0 + math.degrees(_dlon)
-        _alt = _alt0 - self.simPos[2] 
+        _alt = _alt0 - self.pos[2] 
 
         self.master.mav.hil_gps_send(
                 int(time.time() * 1e6), 
@@ -202,7 +202,7 @@ class QuickBullet(QuickBezier):
 #
 #       _r = 6378137.0  
 #
-#       x, y, z = self.simPos
+#       x, y, z = self.pos
 #
 #       dlat = y / _r
 #       dlon = x / (_r * math.cos(math.radians(_lat0)))
@@ -223,9 +223,9 @@ class QuickBullet(QuickBezier):
 #               int(alt * 1e3),          # altitude (mm)
 #               int(eph),                # horizontal dilution of precision (cm)
 #               int(epv),                # vertical dilution of precision (cm)
-#               int(math.sqrt(self.simVel[0]**2 + self.simVel[1]**2) * 100),  # ground speed (cm/s)
-#               int(math.degrees(math.atan2(self.simVel[1], self.simVel[0])) * 100),  # course over ground (cdeg)
-#               int(self.simVel[2] * 100),  # vertical speed (cm/s)
+#               int(math.sqrt(self.vel[0]**2 + self.vel[1]**2) * 100),  # ground speed (cm/s)
+#               int(math.degrees(math.atan2(self.vel[1], self.vel[0])) * 100),  # course over ground (cdeg)
+#               int(self.vel[2] * 100),  # vertical speed (cm/s)
 #               255,  # satellites visible
 #               0, 0,  # idk
 #               0      # heading 
@@ -233,9 +233,9 @@ class QuickBullet(QuickBezier):
 
     def sendFakeOdometry(self):
         _time = int(time.time() * 1e6)
-        _reordered_q = (self.simQ[3], self.simQ[0], self.simQ[1], self.simQ[2])
-        #_reordered_pos = (-self.simPos[0], -self.simPos[1], self.simPos[2])
-        self.sendOdometry(_time, self.simPos, _reordered_q, self.simVel, self.simAngVel)
+        _reordered_q = (self.q[3], self.q[0], self.q[1], self.q[2])
+        #_reordered_pos = (-self.pos[0], -self.pos[1], self.pos[2])
+        self.sendOdometry(_time, self.pos, _reordered_q, self.vel, self.rotRates)
 
     def runSimpleSensorsSim(self):
         self.getSimState()
@@ -385,10 +385,10 @@ class QuickBullet(QuickBezier):
 
     def showState(self):
         _text = (
-                f"Pos [m]:     x={self.simPos[0]:+.3f}, y={self.simPos[1]:+.3f}, z={self.simPos[2]:+.3f}\n"
-                f"Euler [deg]: roll={self.simRot[0]:+.1f}, pitch={self.simRot[1]:+.1f}, yaw={self.simRot[2]:+.1f}\n"
-                f"Lin vel [m/s]: vx={self.simVel[0]:+.3f}, vy={self.simVel[1]:+.3f}, vz={self.simVel[2]:+.3f}\n"
-                f"Ang vel [rad/s]: wx={self.simAngVel[0]:+.3f}, wy={self.simAngVel[1]:+.3f}, wz={self.simAngVel[2]:+.3f}"
+                f"Pos [m]:     x={self.pos[0]:+.3f}, y={self.pos[1]:+.3f}, z={self.pos[2]:+.3f}\n"
+                f"Euler [deg]: roll={self.rot[0]:+.1f}, pitch={self.rot[1]:+.1f}, yaw={self.rot[2]:+.1f}\n"
+                f"Lin vel [m/s]: vx={self.vel[0]:+.3f}, vy={self.vel[1]:+.3f}, vz={self.vel[2]:+.3f}\n"
+                f"Ang vel [rad/s]: wx={self.rotRates[0]:+.3f}, wy={self.rotRates[1]:+.3f}, wz={self.rotRates[2]:+.3f}"
                 )
 
         # --- Remove old text and add new one ---
