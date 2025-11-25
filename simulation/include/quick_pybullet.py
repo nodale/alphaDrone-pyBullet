@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import pybullet as p
 import numpy as np
 from pymavlink import mavutil
+from PIL import Image
 
 from quick_bezier import QuickBezier
 
@@ -15,6 +16,7 @@ class QuickBullet(QuickBezier):
     maxT : float = 8.83
     text_id : None = None
     alpha : float = 0.2
+    timestamp : float = 0.0
 
     def __init__(self, address='localhost:14550', baudrate=57600, modelPath='urdf/preBetaDrone.urdf', worldPath='plane.urdf', **kwargs):
         super().__init__(address=address, baudrate=baudrate, **kwargs)
@@ -41,6 +43,52 @@ class QuickBullet(QuickBezier):
         p.resetBasePositionAndOrientation(bodyUniqueId=self.object, 
                                           posObj=[0, 0, 0.2],
                                           ornObj=p.getQuaternionFromEuler([0, 0, 0]))
+
+    def setupCamera(self):
+        _cam_pos = [1.0, 1.0, 1.0]
+        _cam_target_pos = [0.0, 0.0, 0.0]
+        _up_vector = [0.0, 0.0, 0.1]
+
+        _fov = 60.0
+        _aspect = 1.0
+        _near = 0.1
+        _far = 10.0
+
+        self.view_matrix = p.computeViewMatrix(
+                _cam_pos,
+                _cam_target_pos,
+                _up_vector
+                )
+
+        self.proj_matrix = p.computeProjectionMatrixFOV(
+                _fov,
+                _aspect,
+                _near,
+                _far
+                )
+
+    def printCamera(self):
+        height = 200
+        width = 200
+
+        img = p.getCameraImage(
+                width=width,
+                height=height,
+                viewMatrix=self.view_matrix,
+                projectionMatrix=self.proj_matrix,
+                renderer=p.ER_BULLET_HARDWARE_OPENGL
+                )
+        
+        rgba = np.reshape(img[2], (height, width, 4)) 
+        rgb = rgba[:, :, :3]
+
+        rgb = np.flip(rgb, axis=0).astype(np.uint8)
+
+        pic = Image.fromarray(rgb, mode='RGB')
+        pic = pic.transpose(Image.FLIP_TOP_BOTTOM)
+        _time = int(time.time() * 1e6) & 0xFFFFFFFF
+        pic.save(f"recording/cam_{_time}.png")
+        
 
     def initSimState(self):
         self.pos, self.q = p.getBasePositionAndOrientation(self.object)
@@ -89,6 +137,7 @@ class QuickBullet(QuickBezier):
         self.timeC = time.time()
         #self.dt = self.timeC - self.timeP
         self.dt = 1.0/self.freq
+        self.timestamp += self.dt
         self.timeP = self.timeC
 
     #overwrites takeoff() from QuickBezier
@@ -107,7 +156,7 @@ class QuickBullet(QuickBezier):
             self.sendPositionTarget(_time, self.pos[0], self.pos[1], z)
             time.sleep(1/self.freq)
 
-    def addNoise(self, obj, center=0.0, amplitude=0.008, dim=3):
+    def addNoise(self, obj, center=0.0, amplitude=0.01, dim=3):
         obj += np.random.normal(center, amplitude, dim) 
 
     def getAccelerometer(self):
@@ -235,6 +284,10 @@ class QuickBullet(QuickBezier):
         _time = int(time.time() * 1e6)
         _reordered_q = (self.q[3], self.q[0], self.q[1], self.q[2])
         #_reordered_pos = (-self.pos[0], -self.pos[1], self.pos[2])
+
+        self.addNoise(self.vel)
+        self.addNoise(self.rotRates)
+
         self.sendOdometry(_time, self.pos, _reordered_q, self.vel, self.rotRates)
 
     def runSimpleSensorsSim(self):
