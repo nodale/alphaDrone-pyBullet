@@ -56,9 +56,9 @@ def main():
         qB.runSimpleSensorsSim()
         qB.sendFakeOdometry()
 
-        time.sleep(1.0/qB.freq)
+        #time.sleep(1.0/qB.freq)
 
-        _time = int(time.time() * 1e6) & 0xFFFFFFFF
+        _time = int(qB.timestamp * 1e6) & 0xFFFFFFFF
         #qB.sendPlanarVelocityTarget(_time, 0.3, 0.0, -2.5)
         qB.traverseCurve()
 

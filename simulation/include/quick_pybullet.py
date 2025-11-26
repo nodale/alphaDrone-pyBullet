@@ -86,7 +86,7 @@ class QuickBullet(QuickBezier):
 
         pic = Image.fromarray(rgb, mode='RGB')
         pic = pic.transpose(Image.FLIP_TOP_BOTTOM)
-        _time = int(time.time() * 1e6) & 0xFFFFFFFF
+        _time = int(self.timestamp * 1e6) & 0xFFFFFFFF
         pic.save(f"recording/cam_{_time}.png")
         
 
@@ -104,8 +104,8 @@ class QuickBullet(QuickBezier):
         self.simAccLPF = np.zeros(3, dtype=float)
         self.simGyroLPF = np.zeros(3, dtype=float)
 
-        self.timeC = time.time()
-        self.timeP = time.time()
+        self.timeC = self.timestamp
+        self.timeP = self.timestamp
         self.dt = 0.1
 
         self.propellerJoints = [0, 1, 2, 3] 
@@ -145,13 +145,13 @@ class QuickBullet(QuickBezier):
         print("attempting to take off")
 
         for i in range(100):
-            _time = int(time.time() * 1e6) & 0xFFFFFFFF
+            _time = int(self.timestamp * 1e6) & 0xFFFFFFFF
             self.getSimState()
             self.sendPositionTarget(_time, self.pos[0], self.pos[1], z)
             time.sleep(1/self.freq)
         self.arm()
         for i in range(200):
-            _time = int(time.time() * 1e6) & 0xFFFFFFFF
+            _time = int(self.timestamp * 1e6) & 0xFFFFFFFF
             self.getSimState()
             self.sendPositionTarget(_time, self.pos[0], self.pos[1], z)
             time.sleep(1/self.freq)
@@ -199,7 +199,7 @@ class QuickBullet(QuickBezier):
 
     def sendSimSensors(self):
         #self.master.mav.hil_sensor_send(
-        #    int(time.time() * 1e6) & 0xFFFFFFFF,
+        #    int(self.timestamp * 1e6) & 0xFFFFFFFF,
         #    self.simAcc[0], self.simAcc[1], self.simAcc[2],
         #    self.simGyro[0], self.simGyro[1], self.simGyro[2],
         #    0, 0, 0,
@@ -209,7 +209,7 @@ class QuickBullet(QuickBezier):
         #    )
 
         self.master.mav.hil_sensor_send(
-                int(time.time() * 1e6) & 0xFFFFFFFF,
+                int(self.timestamp * 1e6) & 0xFFFFFFFF,
                 self.simAcc[0], self.simAcc[1], self.simAcc[2],
                 self.simGyro[0], self.simGyro[1], self.simGyro[2],
                 0, 0, 0,
@@ -229,7 +229,7 @@ class QuickBullet(QuickBezier):
         _alt = _alt0 - self.pos[2] 
 
         self.master.mav.hil_gps_send(
-                int(time.time() * 1e6), 
+                int(self.timestamp * 1e6), 
                 3,
                 int(71 * 1e7), 
                 int(-40 * 1e7), 
@@ -265,7 +265,7 @@ class QuickBullet(QuickBezier):
 #       epv = 100    
 #
 #       self.master.mav.hil_gps_send(
-#               int(time.time() * 1e6),  # timestamp (usec)
+#               int(self.timestamp * 1e6),  # timestamp (usec)
 #               fix_type,                # fix type
 #               int(lat * 1e7),          # latitude (degE7)
 #               int(lon * 1e7),          # longitude (degE7)
@@ -281,7 +281,7 @@ class QuickBullet(QuickBezier):
 #               )
 
     def sendFakeOdometry(self):
-        _time = int(time.time() * 1e6)
+        _time = int(self.timestamp * 1e6)
         _reordered_q = (self.q[3], self.q[0], self.q[1], self.q[2])
         #_reordered_pos = (-self.pos[0], -self.pos[1], self.pos[2])
 
