@@ -134,11 +134,11 @@ class QuickMav:
     def get(self, TYPE, block=True):
         return self.master.recv_match(type=TYPE, blocking=False)
 
-    def sendOdometry(self, time, pos, q, vel, rotRates, cov1=[0.1]*21, cov2=[0.1]*21):
+    def sendOdometry(self, time, pos, q, vel, rotRates, cov1=[0.001]*21, cov2=[0.001]*21):
         vodom = mavlink2.MAVLink_odometry_message(
                 time,
                 mavutil.mavlink.MAV_FRAME_LOCAL_NED,
-                mavutil.mavlink.MAV_FRAME_BODY_FRD,
+                mavutil.mavlink.MAV_FRAME_LOCAL_NED,
                 pos[0], pos[1], pos[2],
                 [q[0], q[1], q[2], q[3]],
                 vel[0], vel[1], vel[2],
@@ -201,6 +201,19 @@ class QuickMav:
                 0b0000111111111000,
                 x, y, z,  #position
                 0, 0, 0,  #velocity
+                0, 0, 0,  #acceleration
+                0, 0  #yaw yaw_rate
+               )
+
+    def sendTakeOffTarget(self, time, vz, z): 
+        self.master2.mav.set_position_target_local_ned_send(
+                time,
+                self.master2.target_system,
+                self.master2.target_component,
+                mavutil.mavlink.MAV_FRAME_LOCAL_NED,
+                0b0000111111011011,
+                0, 0, z,  #position
+                0, 0, vz,  #velocity
                 0, 0, 0,  #acceleration
                 0, 0  #yaw yaw_rate
                )

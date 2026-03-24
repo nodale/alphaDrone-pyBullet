@@ -13,7 +13,7 @@ import math
 
 @dataclass
 class QuickBullet(QuickBezier):
-    maxT : float = 8.83
+    maxT : float = 12.00
     text_id : None = None
     alpha : float = 0.2
     timestamp : float = 0.0
@@ -28,7 +28,8 @@ class QuickBullet(QuickBezier):
 
         p.setGravity(self.accField[0], self.accField[1], self.accField[2])
         _planeId = p.loadURDF(worldPath)
-        _startPos = [0,0,0.4]
+        _startPos = [0,0,0.2]
+
         _startOrientation = p.getQuaternionFromEuler([0,0,0])
 
         self.object = p.loadURDF(modelPath, _startPos, _startOrientation)
@@ -40,17 +41,29 @@ class QuickBullet(QuickBezier):
         print("simulation initialisation is done successfully\n")
 
     def reset(self):
+        base_pos = [0.0, 0.0, 0.2]
         p.resetBasePositionAndOrientation(bodyUniqueId=self.object, 
-                                          posObj=[0, 0, 0.2],
+                                          posObj=base_pos,
                                           ornObj=p.getQuaternionFromEuler([0, 0, 0]))
+        p.createConstraint(
+            parentBodyUniqueId=self.object,
+            parentLinkIndex=-1,
+            childBodyUniqueId=-1,
+            childLinkIndex=-1,
+            jointType=p.JOINT_POINT2POINT,
+            jointAxis=[0, 0, 0],
+            parentFramePosition=[0, 0, 0],
+            childFramePosition=base_pos,
+        )
+
 
     def setupCamera(self):
-        _cam_pos = [1.0, 1.0, 1.0]
+        _cam_pos = [3.0, -3.0, 3.0]
         _cam_target_pos = [0.0, 0.0, 0.0]
         _up_vector = [0.0, 0.0, 0.1]
 
-        _fov = 60.0
-        _aspect = 1.0
+        _fov = 40.0
+        _aspect = 1.78
         _near = 0.1
         _far = 10.0
 
@@ -68,8 +81,8 @@ class QuickBullet(QuickBezier):
                 )
 
     def printCamera(self):
-        height = 200
-        width = 200
+        height = 720
+        width = 1280
 
         img = p.getCameraImage(
                 width=width,
@@ -117,22 +130,52 @@ class QuickBullet(QuickBezier):
         self._temp_pos = np.empty(3)
 
     def getSimState(self):
+        #self.posP, self.qP = self.pos, self.q
+        #self.rotP = self.rot
+        #self.velP, self.rotRatesP = self.vel, self.rotRates
+
+        #self.pos, self.q = p.getBasePositionAndOrientation(self.object)
+        #self.rot = self.q2euler(self.q[3], self.q[0], self.q[1], self.q[2])
+        ##self.q = (self.q[3], self.q[0], self.q[1], self.q[2])
+        #self.vel, self.rotRates = p.getBaseVelocity(self.object)
+
+        ##R_wb = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3, 3)
+        ##self.vel = R_wb.T @ self.vel
+
+        ##change coordinate
+        #self.rot = self.q2euler(self.q[3], self.q[0], -self.q[1], -self.q[2])
+        #self.q = (self.q[0], self.q[1], -self.q[2], -self.q[3])
+        #self.rotRates = (self.rotRates[0], -self.rotRates[1], -self.rotRates[2])
+        #self.pos = (self.pos[0], -self.pos[1], -self.pos[2])
+        #self.vel = (self.vel[0], -self.vel[1], -self.vel[2])
+
+        #self.posP, self.qP = self.pos, self.q
+        #self.rotP = self.rot
+        #self.velP, self.rotRatesP = self.vel, self.rotRates
+
+        #self.pos, self.q_raw = p.getBasePositionAndOrientation(self.object)  # [x,y,z,w]
+        #self.vel, self.rotRates = p.getBaseVelocity(self.object)
+        #self.pos = (self.pos[0], -self.pos[1], -self.pos[2])           # FLU→FRD position
+        #self.vel = (self.vel[0], -self.vel[1], -self.vel[2])           # FLU→FRD velocity (world-frame)
+        #self.rotRates = (self.rotRates[0], -self.rotRates[1], -self.rotRates[2])
+        #x, y, z, w = self.q_raw
+        #self.q = (w, x, -y, -z)                                        # Correct FRD quaternion
+
         self.posP, self.qP = self.pos, self.q
-        self.velP, self.rotRatesP = self.vel, self.rotRates
-
-        self.pos, self.q = p.getBasePositionAndOrientation(self.object)
-        #self.q = (self.q[3], self.q[0], self.q[1], self.q[2])
-        self.vel, self.rotRates = p.getBaseVelocity(self.object)
-
-        R_wb = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3, 3)
-        self.vel = R_wb.T @ self.vel
-
-        #change coordinate
-        self.rot = self.q2euler(self.q[3], self.q[0], -self.q[1], -self.q[2])
-        self.q = (self.q[0], -self.q[1], -self.q[2], self.q[3])
-        self.rotRates = (self.rotRates[0], -self.rotRates[1], -self.rotRates[2])
+        self.velP, self.rotRatesP = self.vel, self.rotRates 
+        self.pos, self.q_raw = p.getBasePositionAndOrientation(self.object)
+        self.vel_world, self.rotRates = p.getBaseVelocity(self.object)  # WORLD FRAME
+        
         self.pos = (self.pos[0], -self.pos[1], -self.pos[2])
-        self.vel = (self.vel[0], -self.vel[1], -self.vel[2])
+        vel_frd_world = (self.vel_world[0], -self.vel_world[1], -self.vel_world[2])
+        R_wb = np.array(p.getMatrixFromQuaternion(self.q_raw)).reshape(3, 3)
+        self.vel = tuple(R_wb @ np.array(vel_frd_world)) 
+        
+        self.rotRates = (self.rotRates[0], -self.rotRates[1], -self.rotRates[2])
+        x, y, z, w = self.q_raw
+        self.q = (w, x, -y, -z)
+        self.unordered_q = (x, -y, -z, w)
+        self.rot = self.q2euler(self.q[0], self.q[1], self.q[2], self.q[3])
 
         self.timeC = time.time()
         #self.dt = self.timeC - self.timeP
@@ -156,14 +199,22 @@ class QuickBullet(QuickBezier):
             self.sendPositionTarget(_time, self.pos[0], self.pos[1], z)
             time.sleep(1/self.freq)
 
-    def addNoise(self, obj, center=0.0, amplitude=0.01, dim=3):
+    def addNoise(self, obj, center=0.0, amplitude=0.2, dim=3):
         obj += np.random.normal(center, amplitude, dim) 
 
     def getAccelerometer(self):
-        _R = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3,3)
-        _accWorld = (np.array(self.vel) - np.array(self.velP)) / self.dt
-        _transgravity = _R.T @ self.accField 
-        self.simAcc = _accWorld + _transgravity
+        vel_now = np.array([self.vel[0], self.vel[1], self.vel[2]])
+        vel_past = np.array([self.velP[0], self.velP[1], self.velP[2]])
+        acc_kinematic = (vel_now - vel_past) / self.dt
+        gravity_world = np.array([0, 0, -9.81])
+        R_world_to_body = np.array(p.getMatrixFromQuaternion(self.unordered_q)).reshape(3, 3)
+        self.simAcc = R_world_to_body.T @ gravity_world
+        self.simAcc += acc_kinematic
+
+        #_R = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3,3)
+        #_accWorld = (np.array(self.vel) - np.array(self.velP)) / self.dt
+        #_transgravity = _R.T @ self.accField 
+        #self.simAcc = _accWorld + _transgravity
 
         #R_wb = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3, 3)
         #acc_world = (np.array(self.vel) - np.array(self.velP)) / self.dt
@@ -172,11 +223,13 @@ class QuickBullet(QuickBezier):
 
         #self.simAcc = acc_body
         #self.simAccLPF = self.alpha * self.simAcc + (1.0 - self.alpha) * self.simAccLPF
-        self.addNoise(self.simAcc)
 
     def getGyroscope(self):
-        self.simGyro = np.array(self.rotRates)
+        R_world_to_body = np.array(p.getMatrixFromQuaternion(self.unordered_q)).reshape(3, 3)
+        _body_gyro = R_world_to_body.T @ np.array(self.rotRates)
+        self.simGyro = _body_gyro
 
+        self.addNoise(self.simGyro)
         #_R = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3,3)
         #self.simGyro = _R.T @ np.array(self.rotRates)
         #R_wb = np.array(p.getMatrixFromQuaternion(self.q)).reshape(3, 3)
@@ -185,7 +238,7 @@ class QuickBullet(QuickBezier):
 
         #self.simGyro = R_wb.T @ omega_world
         #self.simGyroLPF = self.alpha * self.simGyro + (1.0 - self.alpha) * self.simGyroLPF
-        self.addNoise(self.simGyro)
+        #self.addNoise(self.simGyro)
 
     #probably not going to be used
     def getMagnetometer(self, magNED=np.array([0.2, 0.0, 0.5])):
@@ -197,7 +250,7 @@ class QuickBullet(QuickBezier):
     def getBarometer(self):
         self.simBaro = 101325 * (1 - 2.25577e-5 * self.pos[2])**5.25588
 
-    def sendSimSensors(self):
+    def sendSimSensors(self, time):
         #self.master.mav.hil_sensor_send(
         #    int(self.timestamp * 1e6) & 0xFFFFFFFF,
         #    self.simAcc[0], self.simAcc[1], self.simAcc[2],
@@ -209,7 +262,7 @@ class QuickBullet(QuickBezier):
         #    )
 
         self.master.mav.hil_sensor_send(
-                int(self.timestamp * 1e6) & 0xFFFFFFFF,
+                time,
                 self.simAcc[0], self.simAcc[1], self.simAcc[2],
                 self.simGyro[0], self.simGyro[1], self.simGyro[2],
                 0, 0, 0,
@@ -218,7 +271,7 @@ class QuickBullet(QuickBezier):
                 0b0000000111111
                 )
 
-    def sendFakeGPS(self):
+    def sendFakeGPS(self, time):
         _lat0, _lon0, _alt0 = 47.397742, 8.545594, 500
 
         _r = 6378137.0 
@@ -229,7 +282,7 @@ class QuickBullet(QuickBezier):
         _alt = _alt0 - self.pos[2] 
 
         self.master.mav.hil_gps_send(
-                int(self.timestamp * 1e6), 
+                time,
                 3,
                 int(71 * 1e7), 
                 int(-40 * 1e7), 
@@ -238,7 +291,7 @@ class QuickBullet(QuickBezier):
                 0, 
                 0, 
                 0, 
-                0, 
+                0,
                 0, 
                 65535, 
                 255, 
@@ -246,58 +299,24 @@ class QuickBullet(QuickBezier):
                 36000 
                 )
 
-#    def sendFakeGPS(self):
-#       _lat0, _lon0, _alt0 = 47.397742, 8.545594, 500.0
-#
-#       _r = 6378137.0  
-#
-#       x, y, z = self.pos
-#
-#       dlat = y / _r
-#       dlon = x / (_r * math.cos(math.radians(_lat0)))
-#
-#       lat = _lat0 + math.degrees(dlat)
-#       lon = _lon0 + math.degrees(dlon)
-#       alt = _alt0 - z  
-#
-#       fix_type = 3 
-#       eph = 100    
-#       epv = 100    
-#
-#       self.master.mav.hil_gps_send(
-#               int(self.timestamp * 1e6),  # timestamp (usec)
-#               fix_type,                # fix type
-#               int(lat * 1e7),          # latitude (degE7)
-#               int(lon * 1e7),          # longitude (degE7)
-#               int(alt * 1e3),          # altitude (mm)
-#               int(eph),                # horizontal dilution of precision (cm)
-#               int(epv),                # vertical dilution of precision (cm)
-#               int(math.sqrt(self.vel[0]**2 + self.vel[1]**2) * 100),  # ground speed (cm/s)
-#               int(math.degrees(math.atan2(self.vel[1], self.vel[0])) * 100),  # course over ground (cdeg)
-#               int(self.vel[2] * 100),  # vertical speed (cm/s)
-#               255,  # satellites visible
-#               0, 0,  # idk
-#               0      # heading 
-#               )
 
-    def sendFakeOdometry(self):
-        _time = int(self.timestamp * 1e6)
-        _reordered_q = (self.q[3], self.q[0], self.q[1], self.q[2])
+    def sendFakeOdometry(self, _time):
+        #_reordered_q = (self.q[3], self.q[0], self.q[1], self.q[2])
         #_reordered_pos = (-self.pos[0], -self.pos[1], self.pos[2])
 
-        self.addNoise(self.vel)
-        self.addNoise(self.rotRates)
+        #self.addNoise(self.vel)
+        #self.addNoise(self.rotRates)
 
-        self.sendOdometry(_time, self.pos, _reordered_q, self.vel, self.rotRates)
+        self.sendOdometry(_time, self.pos, self.q, self.vel, self.rotRates)
 
-    def runSimpleSensorsSim(self):
+    def runSimpleSensorsSim(self, time):
         self.getSimState()
         self.getAccelerometer()
         self.getGyroscope()
         self.getBarometer()
-        self.sendFakeGPS()
+        self.sendFakeGPS(time)
 
-        self.sendSimSensors()
+        self.sendSimSensors(time)
 
     def getActuatorOutput(self):
         try:
@@ -308,81 +327,47 @@ class QuickBullet(QuickBezier):
             self.actOut = self.actOut
 
     def actuateFakeVehicle(self):
+        x = np.hstack((self.pos, self.vel, self.rot, self.rotRates))  # state vector
+        sp = np.array([
+            1.0, 0.0, -0.8, 
+            0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0,
+            0.0, 0.0, 0.0
+            ])
 
-        for _i, _joint in enumerate(self.propellerJoints):
-            _pPos, _pRot = p.getLinkState(self.object, _joint)[0:2]
-            #this will be replaced with a model
-            _temp = 4.0
-            _temp = max(0.0, _temp)
-            _temp *= (-1)**_i
-            _thrust_vector = [0.0, 0.0, _temp] 
+        #u_eq = np.array([8.04575222, 8.04575222, 7.55214778, 7.55214778])  
+        u_eq = np.array([7.8, 7.8, 7.8, 7.8])  
 
-            p.applyExternalForce(
-                    objectUniqueId=self.object,
-                    linkIndex=_joint,
-                    forceObj=_thrust_vector,
-                    posObj=_pPos,
-                    flags=p.LINK_FRAME
-                    )
+        #K = np.array([
+        #        [-1.144779,  1.118034, 0.616729, -2.176632,  2.113474,  1.721950, -6.434980, -6.822077, -0.070711, -1.038827, -1.133037, -0.353416],
+        #        [-1.144779, -1.118034, 0.616729, -2.176632, -2.113474,  1.721950,  6.434980, -6.822077,  0.070711,  1.038827, -1.133037,  0.353416],
+        #        [ 1.090084, -1.118034, 0.673570,  2.073100, -2.113474,  1.881167,  6.434980,  6.507153, -0.070711,  1.038827,  1.087294, -0.353416],
+        #        [ 1.090084,  1.118034, 0.673570,  2.073100,  2.113474,  1.881167, -6.434980,  6.507153,  0.070711, -1.038827,  1.087294,  0.353416]
+        #    ])
 
-#    def actuateVehicle(self):
-#        _act_sq = np.array(self.actOut)
-#
-#        _KF = self.maxT
-#        _KM = 0.11 * self.maxT   
-#
-#        _forces = _act_sq * _KF
-#        _torques = _act_sq * _KM
-#
-#        _arm_length = 0.158  
-#        #this one is in pyBullet's coordinate sys
-#        _positions = np.array([
-#            [ _arm_length, -_arm_length, 0],  
-#            [ _arm_length, _arm_length, 0],  
-#            [-_arm_length, _arm_length, 0],  
-#            [-_arm_length, -_arm_length, 0],  
-#            ])
-#
-#        _spin_dir = np.array([1, -1, 1, -1])
-#
-#        _total_force = np.zeros(3)
-#        _total_torque = np.zeros(3)
-#
-#        for i in range(4):
-#            f_i = np.array([0, 0, _forces[i]])
-#
-#            tau_z = np.array([0, 0, _spin_dir[i] * _torques[i]])
-#
-#            tau_arm = np.cross(_positions[i], f_i)
-#
-#            _total_force += f_i
-#            _total_torque += tau_arm + tau_z
-#
-#        _, quat = p.getBasePositionAndOrientation(self.object)
-#        R_wb = np.array(p.getMatrixFromQuaternion(quat)).reshape(3, 3)
-#        _total_force_body = R_wb.T @ _total_force
-#        _total_torque_body = R_wb.T @ _total_torque
-#
-#        p.applyExternalForce(
-#            self.object, -1,
-#            forceObj=_total_force_body.tolist(),
-#            posObj=[0, 0, 0],
-#            flags=p.LINK_FRAME,
-#        )
-#
-#        p.applyExternalTorque(
-#            self.object, -1,
-#            torqueObj=_total_torque_body.tolist(),
-#            flags=p.LINK_FRAME,
-#        )
+        
+        K = np.array([
+    [ 1.256562,  1.256562,  0.466252,  1.230240,  1.210217,  1.430276,  4.176322, -4.367069, -0.057354,  0.813507, -0.876924, -0.256517],
+    [ 1.256562, -1.256562,  0.466252,  1.230240, -1.210217,  1.430276, -4.176322, -4.367069,  0.057354, -0.813507, -0.876924,  0.256517],
+    [-1.256562, -1.256562,  0.466252, -1.230240, -1.210217,  1.430276, -4.176322,  4.367069, -0.057354, -0.813507,  0.876924, -0.256517],
+    [-1.256562,  1.256562,  0.466252, -1.230240,  1.210217,  1.430276,  4.176322,  4.367069,  0.057354,  0.813507,  0.876924,  0.256517]
+], dtype=np.float32)
 
-    def actuateVehicle(self):
-        _act_sq = np.array(self.actOut)
+        offset = (x - sp)
+        #u = u_eq + K @ -offset
+        u = u_eq + K @ offset
+        #print(f"{offset:.3f}")
+        #print(f"{offset[0]:.3f}     {offset[1]:.3f}     {offset[2]:.3f}")
+        print(u)
+        #print(offset)
+
+        #u = np.clip(u, 0.0, 1.0)
+
+        _act_sq = u
+        _forces = u
 
         _KF = self.maxT
         _KM = 0.09 * self.maxT
-
-        _forces = _act_sq * _KF
         _torques = _act_sq * _KM
 
         _arm_length = 0.158
@@ -396,7 +381,53 @@ class QuickBullet(QuickBezier):
             [-_arm_length - _x_offset, -_arm_length - _y_offset, 0.0 - _z_offset], 
         ])
 
-        _spin_dir = np.array([1, -1, 1, -1])
+        _spin_dir = np.array([-1, 1, -1, 1])
+
+        for i in range(4):
+            f_body = np.array([0, 0, _forces[i]])
+            tau_body = np.array([0, 0, _spin_dir[i] * _torques[i]])
+
+            p.applyExternalForce(
+                self.object, -1,
+                forceObj=f_body.tolist(),
+                posObj=_positions[i].tolist(),
+                flags=p.LINK_FRAME,
+            )
+
+            p.applyExternalTorque(
+                self.object, -1,
+                torqueObj=tau_body.tolist(),
+                flags=p.LINK_FRAME,
+            )
+
+    def actuateVehicle(self):
+        _act_sq = np.array(self.actOut)
+
+        _KF = self.maxT
+        _KM = 0.09 * self.maxT
+
+        print(_act_sq)
+        _forces = _act_sq * _KF
+        for i in range(4):
+            if _act_sq[i] <= 0.192:
+                _forces[i] *= 0.0
+            else:
+                _forces[i] = 10.81 * ((_act_sq[i] - 0.191) / 0.689) ** (1.0 / 0.690)
+
+        _torques = _act_sq * _KM
+
+        _arm_length = 0.158
+        _x_offset = 0.00323
+        _y_offset = 0.001
+        _z_offset = -0.014
+        _positions = np.array([
+            [ _arm_length - _x_offset, -_arm_length - _y_offset, 0.0 - _z_offset],   
+            [ _arm_length - _x_offset,  _arm_length - _y_offset, 0.0 - _z_offset],  
+            [-_arm_length - _x_offset,  _arm_length - _y_offset, 0.0 - _z_offset], 
+            [-_arm_length - _x_offset, -_arm_length - _y_offset, 0.0 - _z_offset], 
+        ])
+
+        _spin_dir = np.array([-1, 1, -1, 1])
 
         _, quat = p.getBasePositionAndOrientation(self.object)
         R_wb = np.array(p.getMatrixFromQuaternion(quat)).reshape(3, 3)
